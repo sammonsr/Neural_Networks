@@ -1,4 +1,5 @@
 from random import random
+from random import shuffle as randshuffle
 
 import numpy as np
 import pickle
@@ -470,7 +471,7 @@ class Trainer(object):
         #######################################################################
 
         shuffled_indicies = list(range(len(input_dataset)))
-        random.shuffle(shuffled_indicies)
+        randshuffle(shuffled_indicies)
 
         input_shuffled = []
         target_shuffled = []
@@ -516,7 +517,7 @@ class Trainer(object):
 
             # Split into batches
             batches = []
-            num_per_batch = len(input_dataset) / self.batch_size
+            num_per_batch = int(len(input_dataset) / self.batch_size)
             for j in range(0, len(input_dataset), num_per_batch):
                 input_batch = input_dataset[j: min(len(input_dataset) - 1, j + num_per_batch)]
                 target_batch = target_dataset[j: min(len(target_dataset) - 1, j + num_per_batch)]
@@ -633,8 +634,8 @@ def example_main():
 
     prep_input = Preprocessor(x_train)
 
-    x_train_pre = prep_input.apply(x_train)
-    x_val_pre = prep_input.apply(x_val)
+    # x_train_pre = prep_input.apply(x_train)
+    # x_val_pre = prep_input.apply(x_val)
 
     trainer = Trainer(
         network=net,
@@ -645,28 +646,43 @@ def example_main():
         shuffle_flag=True,
     )
 
-    trainer.train(x_train_pre, y_train)
-    print("Train loss = ", trainer.eval_loss(x_train_pre, y_train))
-    print("Validation loss = ", trainer.eval_loss(x_val_pre, y_val))
+    # All x_train and x_val have had the suffix _pre removed
 
-    preds = net(x_val_pre).argmax(axis=1).squeeze()
+    trainer.train(x_train, y_train)
+    print("Train loss = ", trainer.eval_loss(x_train, y_train))
+    print("Validation loss = ", trainer.eval_loss(x_val, y_val))
+
+    preds = net(x_val).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
     accuracy = (preds == targets).mean()
     print("Validation accuracy: {}".format(accuracy))
 
 
 if __name__ == "__main__":
-    learning_rate = 0.5
-    dat = np.loadtxt("iris.dat")
-    np.random.shuffle(dat)
+    # learning_rate = 0.5
+    # dat = np.loadtxt("iris.dat")
+    # np.random.shuffle(dat)
+    #
+    # x = dat[:, :4]
+    # y = dat[:, 4:]
+    #
+    # network = MultiLayerNetwork(input_dim=4, neurons=[16, 2], activations=['relu', 'sigmoid'])
+    # outputs = network(x)
+    #
+    # trainer = Trainer(
+    #     network=network,
+    #     batch_size=32,
+    #     nb_epoch=10,
+    #     learning_rate=0.01,
+    #     loss_fun="cross_entropy",
+    #     shuffle_flag=True,
+    # )
+    #
+    # trainer.train(x, y)
+    #
+    # train_loss = trainer.eval_loss(x, y)
+    #
+    # grad_loss_wrt_inputs = network.backward(grad_loss_wrt_outputs)
+    # network.update_params(learning_rate)
 
-    x = dat[:, :4]
-    y = dat[:, 4:]
-
-    network = MultiLayerNetwork(input_dim=4, neurons=[16, 2], activations=['relu', 'sigmoid'])
-    outputs = network(x)
-
-    grad_loss_wrt_inputs = network.backward(grad_loss_wrt_outputs)
-    network.update_params(learning_rate)
-
-    # example_main()
+    example_main()
