@@ -1,3 +1,5 @@
+from random import random
+
 import numpy as np
 import pickle
 
@@ -162,16 +164,20 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = None
-        self._b = None
+        self._W = np.random.rand(n_out)
+        self._b = 1
 
-        self._cache_current = None
+        # Dictionary of cached values
+        self._cache_current = {'x': None}
         self._grad_W_current = None
         self._grad_b_current = None
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
+    def __str__(self):
+        return "LinearLayer({},{})".format(self.n_in, self.n_out)
 
     def forward(self, x):
         """
@@ -189,7 +195,12 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        XW = np.dot(x, self._W) + self._b
+
+        self._cache_current['x'] = x
+
+        return XW
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -212,7 +223,17 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        # TODO: If break could be b/c need to transpose/check dimens
+        dz_dw = self._cache_current['x']
+        dl_dw = dz_dw * grad_z
+        dl_db = grad_z
+
+        # Set gradients for update_params usage
+        self._grad_W_current = dl_dw
+        self._grad_b_current = dl_db
+
+        return dl_dw
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -229,7 +250,9 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        self._W = self._W - (learning_rate * self._grad_W_current)
+        self._b = self._b - (learning_rate * self._grad_b_current)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -259,10 +282,37 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = None
+        self._layers = []
+
+        num_layers = len(self.neurons)
+
+        last_layer_num_out = input_dim
+        for i in range(num_layers):
+            num_in = last_layer_num_out
+            num_out = self.neurons[i]
+
+            last_layer_num_out = num_out
+
+            self._layers.append(LinearLayer(num_in, num_out))
+            self._layers.append(self.str_to_activation_layer(activations[i]))
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
+    def __str__(self):
+        ret = ""
+        for layer in self._layers:
+            ret += str(layer) + "\n"
+
+        return ret
+
+    def str_to_activation_layer(self, layer_name):
+        if layer_name == "relu":
+            return ReluLayer()
+        if layer_name == "sigmoid":
+            return SigmoidLayer()
+        raise Exception('Unknown layer ' + layer_name)
 
     def forward(self, x):
         """
@@ -278,8 +328,12 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
 
+        prev_out = x
+        for layer in self._layers:
+            prev_out = layer.forward(prev_out)
+
+        return prev_out
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -302,7 +356,12 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        prev_grad_z = grad_z
+        for layer in reversed(self._layers):
+            prev_grad_z = layer.backward(prev_grad_z)
+
+        return prev_grad_z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -319,7 +378,9 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        for layer in self._layers:
+            layer.update_params(learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -349,13 +410,13 @@ class Trainer(object):
     """
 
     def __init__(
-        self,
-        network,
-        batch_size,
-        nb_epoch,
-        learning_rate,
-        loss_fun,
-        shuffle_flag,
+            self,
+            network,
+            batch_size,
+            nb_epoch,
+            learning_rate,
+            loss_fun,
+            shuffle_flag,
     ):
         """Constructor.
 
@@ -379,10 +440,17 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._loss_layer = None
+        self._loss_layer = self.name_to_loss_layer(loss_fun)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
+    def name_to_loss_layer(self, name):
+        if name == "mse":
+            return MSELossLayer()
+        if name == "cross_entropy":
+            return CrossEntropyLossLayer()
+        raise Exception("Unknown loss layer ", name)
 
     @staticmethod
     def shuffle(input_dataset, target_dataset):
@@ -400,7 +468,18 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        shuffled_indicies = list(range(len(input_dataset)))
+        random.shuffle(shuffled_indicies)
+
+        input_shuffled = []
+        target_shuffled = []
+
+        for i in shuffled_indicies:
+            input_shuffled.append(input_dataset[i])
+            target_shuffled.append(target_dataset[i])
+
+        return np.array(input_shuffled), np.array(target_shuffled)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -429,7 +508,19 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        assert len(input_dataset) == len(target_dataset)
+
+        for i in range(self.nb_epoch):
+            if self.shuffle_flag:
+                input_dataset, target_dataset = self.shuffle(input_dataset, target_dataset)
+
+            # Split into batches
+            batches = []
+            num_per_batch = len(input_dataset) / self.batch_size
+            for j in range(0, len(input_dataset), num_per_batch):
+                input_batch = input_dataset[j: min(len(input_dataset) - 1, j + num_per_batch)]
+                target_batch = target_dataset[j: min(len(target_dataset) - 1, j + num_per_batch)]
+                batches.append((input_batch, target_batch))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -448,7 +539,10 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        predictions = self.network.forward(input_dataset)
+
+        return self._loss_layer.forward(predictions, target_dataset)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -521,7 +615,7 @@ class Preprocessor(object):
 def example_main():
     input_dim = 4
     neurons = [16, 3]
-    activations = ["relu", "identity"]
+    activations = ["relu", "sigmoid"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
@@ -562,4 +656,17 @@ def example_main():
 
 
 if __name__ == "__main__":
-    example_main()
+    learning_rate = 0.5
+    dat = np.loadtxt("iris.dat")
+    np.random.shuffle(dat)
+
+    x = dat[:, :4]
+    y = dat[:, 4:]
+
+    network = MultiLayerNetwork(input_dim=4, neurons=[16, 2], activations=['relu', 'sigmoid'])
+    outputs = network(x)
+
+    grad_loss_wrt_inputs = network.backward(grad_loss_wrt_outputs)
+    network.update_params(learning_rate)
+
+    # example_main()
