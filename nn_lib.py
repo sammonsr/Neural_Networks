@@ -101,28 +101,16 @@ class SigmoidLayer(Layer):
         return "SigmoidLayer"
 
     def sigmoid(self, x):
-        # Different cases to avoid underflow error
-        if x < 0:
-            return 1 - 1 / (1 + math.exp(x))
-        return 1 / (1 + math.exp(-x))
+        return 1 / (1 + np.exp(x))
 
     def sigmoid_prime(self, x):
-        result = x.copy()
-        for i in range(len(result)):
-            for j in range(len(result[0])):
-                result[i][j] = self.sigmoid(result[i][j]) * (1 - self.sigmoid(result[i][j]))
-
-        assert x.shape == result.shape
-
-        return result
+        return self.sigmoid(x) * (1 - self.sigmoid(x))
 
     def forward(self, x):
         #                       ** START OF YOUR CODE **
         #######################################################################
         result = x.copy()
-        for i in range(len(result)):
-            for j in range(len(result[0])):
-                result[i][j] = self.sigmoid(result[i][j])
+        self.sigmoid(result)
 
         self._cache_current['x'] = x.copy()
         return result
