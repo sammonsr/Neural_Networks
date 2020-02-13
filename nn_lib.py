@@ -629,11 +629,26 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        self.min_max = [] # [[min, max], ... ], each element corresponds to a column
+        self.data = data
+        self.calc_min_max_values()
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
+    def calc_min_max_values(self):
+        # Reset min_max list
+        self.min_max = []
+        # Loop through all columns
+        for i in range(len(self.data[0])):
+            # Get all values for this column, work out the min and max, and store that in the min_max list
+            colmn_vals = [row[i] for row in self.data]
+            min_val = min(colmn_vals)
+            max_val = max(colmn_vals)
+            self.min_max.append([min_val, max_val])
+
 
     def apply(self, data):
         """
@@ -648,7 +663,16 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        result = data.copy()
+        for row in result:
+            # Go through each column in this row and normalize the value
+            for i in range(len(row)):
+                # Normalize value using formula v' = (v - min) / (max - min)
+                min = self.min_max[i][0]
+                max = self.min_max[i][1]
+                row[i] = (row[i] - self.min_max[i][0]) / (self.min_max[i][1] - self.min_max[i][0])
+
+        return result
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -667,7 +691,17 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        result = data.copy()
+        for row in result:
+            # Go through each column in this row and normalize the value
+            for i in range(len(row)):
+                # Revert to original value using formula v = v'(max- min) + min
+                min = self.min_max[i][0]
+                max = self.min_max[i][1]
+                row[i] = (row[i] * (max - min)) + min
+
+        return result
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -697,8 +731,8 @@ def example_main():
 
     prep_input = Preprocessor(x_train)
 
-    # x_train_pre = prep_input.apply(x_train)
-    # x_val_pre = prep_input.apply(x_val)
+    x_train_pre = prep_input.apply(x_train)
+    x_val_pre = prep_input.apply(x_val)
 
     trainer = Trainer(
         network=net,
@@ -711,9 +745,9 @@ def example_main():
 
     # All x_train and x_val have had the suffix _pre removed
 
-    trainer.train(x_train, y_train)
-    print("Train loss = ", trainer.eval_loss(x_train, y_train))
-    print("Validation loss = ", trainer.eval_loss(x_val, y_val))
+    trainer.train(x_train_pre, y_train)
+    print("Train loss = ", trainer.eval_loss(x_train_pre, y_train))
+    print("Validation loss = ", trainer.eval_loss(x_val_pre, y_val))
 
     preds = net(x_val).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
