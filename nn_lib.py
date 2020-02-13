@@ -95,18 +95,33 @@ class SigmoidLayer(Layer):
     """
 
     def __init__(self):
-        self._cache_current = None
+        self._cache_current = {}
 
     def sigmoid(self, x):
+        if x < -673:
+            return 0
         return 1 / (1 + math.exp(-x))
+
+    def sigmoid_prime(self, x):
+        result = x.copy()
+        for i in range(len(result)):
+            for j in range(len(result[0])):
+                result[i][j] = self.sigmoid(result[i][j]) * (1 - self.sigmoid(result[i][j]))
+
+        assert x.shape == result.shape
+
+        return result
 
     def forward(self, x):
         #                       ** START OF YOUR CODE **
         #######################################################################
-        for i in range(len(x)):
-            for j in range(len(x[0])):
-                x[i][j] = self.sigmoid(x[i][j])
-        return x
+        result = x.copy()
+        for i in range(len(result)):
+            for j in range(len(result[0])):
+                result[i][j] = self.sigmoid(result[i][j])
+
+        self._cache_current['Z'] = result.copy()
+        return result
         #######################################################################
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -116,7 +131,13 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        dl_da = grad_z
+        g_prime_z = self.sigmoid_prime(self._cache_current['Z'])
+        # Compute Hadamard product (element-wise)
+        dl_dz = np.multiply(dl_da, g_prime_z)
+
+        return dl_dz
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -129,15 +150,27 @@ class ReluLayer(Layer):
     """
 
     def __init__(self):
-        self._cache_current = None
+        self._cache_current = {}
 
+    def relu_prime(self, x):
+        result = x.copy()
+
+        for i in range(len(result)):
+            for j in range(len(result[0])):
+                val = result[i][j]
+                if val > 0:
+                    result[i][j] = 1
+                result[i][j] = 0
+
+        return result
 
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
-        return np.maximum(x, 0)
+        result = np.maximum(x, 0)
+        self._cache_current['Z'] = result
+        return result
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -147,7 +180,13 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        dl_da = grad_z
+        g_prime_z = self.relu_prime(self._cache_current['Z'])
+        # Compute Hadamard product (element-wise)
+        dl_dz = np.multiply(dl_da, g_prime_z)
+
+        return dl_dz
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -204,16 +243,12 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        print("x",x)
-        print("w,",self._W)
-        print("b",self._b)
-        XW = np.dot(x, self._W) + self._b
+        XW_b = np.dot(x, self._W) + self._b
 
+        self._cache_current['xw_b'] = XW_b
         self._cache_current['x'] = x
 
-        assert XW is not None
-
-        return XW
+        return XW_b
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -236,19 +271,24 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
-
-
         # TODO: If break could be b/c need to transpose/check dimens
-        dz_dw = self._cache_current['x']
-        dl_dw = dz_dw * grad_z
-        dl_db = grad_z
+        # dz_dw = self._cache_current['x']
+        # dl_dw = dz_dw * grad_z
+        # dl_db = grad_z
+
+        dl_dz = grad_z
+
+        ones_row_vector = np.ones([1, dl_dz.shape[0]])
+
+        dl_dw = np.dot(self._cache_current['x'].T, dl_dz)
+        dl_db = np.dot(ones_row_vector, dl_dz)
 
         # Set gradients for update_params usage
         self._grad_W_current = dl_dw
         self._grad_b_current = dl_db
 
-        return dl_dw
+        dl_dx = np.dot(dl_dz, self._W.T)
+        return dl_dx
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -343,13 +383,9 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
         prev_out = x
         for layer in self._layers:
-            print(layer)
-            assert prev_out is not None
             prev_out = layer.forward(prev_out)
-            assert prev_out is not None
 
         return prev_out
         #######################################################################
@@ -541,14 +577,13 @@ class Trainer(object):
 
             for (input, target) in batches:
                 # Forward pass for batch
-                self.network.forward(input_batch)
+                predictions = self.network.forward(input)
                 # Compute loss
-                loss = self.eval_loss(input, target)
+                loss = self.eval_loss(input_dataset, target_dataset)
                 # Perform backward pass
-                self.network.backward(input_batch)
+                self.network.backward(loss)
                 # Perform one step of gradient descent
                 self.network.update_params(self.learning_rate)
-
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -567,10 +602,9 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
         predictions = self.network.forward(input_dataset)
-
-        return self._loss_layer.forward(predictions, target_dataset)
+        loss = self._loss_layer.forward(predictions, target_dataset)
+        return loss
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -645,6 +679,8 @@ def example_main():
     neurons = [16, 3]
     activations = ["relu", "sigmoid"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
+
+    print(net)
 
     dat = np.loadtxt("iris.dat")
     np.random.shuffle(dat)
