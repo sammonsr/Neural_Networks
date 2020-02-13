@@ -150,13 +150,10 @@ class ReluLayer(Layer):
     def relu_prime(self, x):
         result = x.copy()
 
-        for i in range(len(result)):
-            for j in range(len(result[0])):
-                val = result[i][j]
-                if val > 0:
-                    result[i][j] = 1
-                else:
-                    result[i][j] = 0
+        clamp = lambda v: max(0, v)
+        clamp = np.vectorize(clamp)
+
+        clamp(result)
 
         return result
 
@@ -243,9 +240,12 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        XW_b = np.matmul(x, self._W) + self._b
-
         self._cache_current['x'] = x
+
+        # Tile bias to the batch size
+        B = np.tile(self._b, (x.shape[0], 1))
+
+        XW_b = np.matmul(x, self._W) + B
 
         return XW_b
 
@@ -271,7 +271,7 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         dl_dz = grad_z
-        ones_row_vector = np.ones([1, dl_dz.shape[0]])
+        ones_row_vector = np.ones(dl_dz.shape[0])
 
         dl_dw = np.matmul(self._cache_current['x'].T, dl_dz)
         dl_db = np.matmul(ones_row_vector, dl_dz)   #TODO: CHECK
@@ -750,7 +750,7 @@ def example_main():
         batch_size=8,
         nb_epoch=1000,
         learning_rate=0.01,
-        loss_fun="mse",
+        loss_fun="cross_entropy",
         shuffle_flag=True,
     )
 
