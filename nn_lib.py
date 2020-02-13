@@ -97,9 +97,13 @@ class SigmoidLayer(Layer):
     def __init__(self):
         self._cache_current = {}
 
+    def __str__(self):
+        return "SigmoidLayer"
+
     def sigmoid(self, x):
-        if x < -673:
-            return 0
+        # Different cases to avoid underflow error
+        if x < 0:
+            return 1 - 1 / (1 + math.exp(x))
         return 1 / (1 + math.exp(-x))
 
     def sigmoid_prime(self, x):
@@ -151,6 +155,9 @@ class ReluLayer(Layer):
 
     def __init__(self):
         self._cache_current = {}
+
+    def __str__(self):
+        return "ReluLayer"
 
     def relu_prime(self, x):
         result = x.copy()
@@ -224,7 +231,7 @@ class LinearLayer(Layer):
         #######################################################################
 
     def __str__(self):
-        return "LinearLayer({},{})".format(self.n_in, self.n_out)
+        return "LinearLayer (In:{}, Out:{})".format(self.n_in, self.n_out)
 
     def forward(self, x):
         """
@@ -271,11 +278,6 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        # TODO: If break could be b/c need to transpose/check dimens
-        # dz_dw = self._cache_current['x']
-        # dl_dw = dz_dw * grad_z
-        # dl_db = grad_z
-
         dl_dz = grad_z
 
         ones_row_vector = np.ones([1, dl_dz.shape[0]])
@@ -356,9 +358,9 @@ class MultiLayerNetwork(object):
         #######################################################################
 
     def __str__(self):
-        ret = ""
+        ret = "\nMultiLayerNetwork \n"
         for layer in self._layers:
-            ret += str(layer) + "\n"
+            ret += "    ↓\n " + str(layer) + "\n"
 
         return ret
 
@@ -714,8 +716,6 @@ def example_main():
     activations = ["relu", "sigmoid"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
-    print(net)
-
     dat = np.loadtxt("iris.dat")
     np.random.shuffle(dat)
 
@@ -752,7 +752,12 @@ def example_main():
     preds = net(x_val).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
     accuracy = (preds == targets).mean()
+    print(preds)
+    print(targets)
+
     print("Validation accuracy: {}".format(accuracy))
+
+    print(net)
 
 
 if __name__ == "__main__":
