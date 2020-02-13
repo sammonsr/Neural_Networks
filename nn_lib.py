@@ -1,6 +1,6 @@
 from random import random
 from random import shuffle as randshuffle
-
+import math
 import numpy as np
 import pickle
 
@@ -97,12 +97,17 @@ class SigmoidLayer(Layer):
     def __init__(self):
         self._cache_current = None
 
+    def sigmoid(self, x):
+        return 1 / (1 + math.exp(-x))
+
     def forward(self, x):
-        #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
-
+        for i in range(len(x)):
+            for j in range(len(x[0])):
+                x[i][j] = self.sigmoid(x[i][j])
+        return x
+        #######################################################################
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -126,11 +131,13 @@ class ReluLayer(Layer):
     def __init__(self):
         self._cache_current = None
 
+
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        return np.maximum(x, 0)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -165,7 +172,7 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = np.random.rand(n_out)
+        self._W = np.random.rand(n_in, n_out)
         self._b = 1
 
         # Dictionary of cached values
@@ -197,9 +204,14 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        print("x",x)
+        print("w,",self._W)
+        print("b",self._b)
         XW = np.dot(x, self._W) + self._b
 
         self._cache_current['x'] = x
+
+        assert XW is not None
 
         return XW
 
@@ -224,6 +236,8 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+
 
         # TODO: If break could be b/c need to transpose/check dimens
         dz_dw = self._cache_current['x']
@@ -332,7 +346,10 @@ class MultiLayerNetwork(object):
 
         prev_out = x
         for layer in self._layers:
+            print(layer)
+            assert prev_out is not None
             prev_out = layer.forward(prev_out)
+            assert prev_out is not None
 
         return prev_out
         #######################################################################
@@ -499,7 +516,6 @@ class Trainer(object):
                 respect to parameters of network.
                 - Performs one step of gradient descent on the network
                 parameters.
-
         Arguments:
             - input_dataset {np.ndarray} -- Array of input features, of shape
                 (#_training_data_points, n_features).
@@ -512,16 +528,27 @@ class Trainer(object):
         assert len(input_dataset) == len(target_dataset)
 
         for i in range(self.nb_epoch):
+            # Shuffle input data
             if self.shuffle_flag:
                 input_dataset, target_dataset = self.shuffle(input_dataset, target_dataset)
 
             # Split into batches
             batches = []
-            num_per_batch = int(len(input_dataset) / self.batch_size)
-            for j in range(0, len(input_dataset), num_per_batch):
-                input_batch = input_dataset[j: min(len(input_dataset) - 1, j + num_per_batch)]
-                target_batch = target_dataset[j: min(len(target_dataset) - 1, j + num_per_batch)]
+            for j in range(0, len(input_dataset), self.batch_size):
+                input_batch = input_dataset[j: min(len(input_dataset) - 1, j + self.batch_size)]
+                target_batch = target_dataset[j: min(len(target_dataset) - 1, j + self.batch_size)]
                 batches.append((input_batch, target_batch))
+
+            for (input, target) in batches:
+                # Forward pass for batch
+                self.network.forward(input_batch)
+                # Compute loss
+                loss = self.eval_loss(input, target)
+                # Perform backward pass
+                self.network.backward(input_batch)
+                # Perform one step of gradient descent
+                self.network.update_params(self.learning_rate)
+
 
         #######################################################################
         #                       ** END OF YOUR CODE **
