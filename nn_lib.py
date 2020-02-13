@@ -124,7 +124,7 @@ class SigmoidLayer(Layer):
             for j in range(len(result[0])):
                 result[i][j] = self.sigmoid(result[i][j])
 
-        self._cache_current['Z'] = result.copy()
+        self._cache_current['x'] = x.copy()
         return result
         #######################################################################
         #######################################################################
@@ -137,7 +137,7 @@ class SigmoidLayer(Layer):
         #######################################################################
 
         dl_da = grad_z
-        g_prime_z = self.sigmoid_prime(self._cache_current['Z'])
+        g_prime_z = self.sigmoid_prime(self._cache_current['x'])
         # Compute Hadamard product (element-wise)
         dl_dz = np.multiply(dl_da, g_prime_z)
 
@@ -167,7 +167,8 @@ class ReluLayer(Layer):
                 val = result[i][j]
                 if val > 0:
                     result[i][j] = 1
-                result[i][j] = 0
+                else:
+                    result[i][j] = 0
 
         return result
 
@@ -176,7 +177,7 @@ class ReluLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         result = np.maximum(x, 0)
-        self._cache_current['Z'] = result
+        self._cache_current['x'] = x
         return result
 
         #######################################################################
@@ -189,9 +190,10 @@ class ReluLayer(Layer):
         #######################################################################
 
         dl_da = grad_z
-        g_prime_z = self.relu_prime(self._cache_current['Z'])
+        g_prime_z = self.relu_prime(self._cache_current['x'])
         # Compute Hadamard product (element-wise)
         dl_dz = np.multiply(dl_da, g_prime_z)
+        # print("HEY!!", dl_dz)
 
         return dl_dz
 
@@ -205,7 +207,7 @@ class LinearLayer(Layer):
     LinearLayer: Performs affine transformation of input.
     """
 
-    def __init__(self, n_in, n_out):
+    def __init__(self, n_in, n_out, layer_num=-1):
         """Constructor.
 
         Arguments:
@@ -218,8 +220,9 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = np.random.rand(n_in, n_out)
-        self._b = 1
+        self._W = xavier_init((n_in, n_out))
+        self._b = xavier_init((1, n_out))
+        self.layer_num = layer_num
 
         # Dictionary of cached values
         self._cache_current = {'x': None}
@@ -231,7 +234,9 @@ class LinearLayer(Layer):
         #######################################################################
 
     def __str__(self):
-        return "LinearLayer (In:{}, Out:{})".format(self.n_in, self.n_out)
+        return "LinearLayer #{} (In:{}, Out:{}) \n   with bias {} and \n   weights {}".format(self.layer_num, self.n_in,
+                                                                                              self.n_out, self._b,
+                                                                                              self._W)
 
     def forward(self, x):
         """
@@ -250,9 +255,8 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        XW_b = np.dot(x, self._W) + self._b
+        XW_b = np.matmul(x, self._W) + self._b
 
-        self._cache_current['xw_b'] = XW_b
         self._cache_current['x'] = x
 
         return XW_b
@@ -279,17 +283,19 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         dl_dz = grad_z
-
         ones_row_vector = np.ones([1, dl_dz.shape[0]])
 
-        dl_dw = np.dot(self._cache_current['x'].T, dl_dz)
-        dl_db = np.dot(ones_row_vector, dl_dz)
+        dl_dw = np.matmul(self._cache_current['x'].T, dl_dz)
+        dl_db = np.matmul(ones_row_vector, dl_dz)   #TODO: CHECK
 
         # Set gradients for update_params usage
         self._grad_W_current = dl_dw
         self._grad_b_current = dl_db
 
-        dl_dx = np.dot(dl_dz, self._W.T)
+        if self.layer_num == 1:
+            pass#print(np.matmul(self._cache_current['x'].T, dl_dz))
+
+        dl_dx = np.matmul(dl_dz, self._W.T)
         return dl_dx
 
         #######################################################################
@@ -308,8 +314,25 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        old_w = self._W.copy()
+        old_w_shape = self._W.shape
+        old_b_shape = self._b.shape
         self._W = self._W - (learning_rate * self._grad_W_current)
         self._b = self._b - (learning_rate * self._grad_b_current)
+
+        #print("W is now ", self._W)
+        #print("b is now ", self._b)
+
+        if self.layer_num == 0:
+            pass#print("Minusing off ", (learning_rate * self._grad_b_current))
+
+        assert self._W.shape == old_w_shape
+
+        assert self._b.shape == old_b_shape
+
+        # assert not np.array_equal(old_w,self._W)
+        #if self.layer_num == 0:
+            #print("Taking off ", (self._grad_b_current))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -350,7 +373,7 @@ class MultiLayerNetwork(object):
 
             last_layer_num_out = num_out
 
-            self._layers.append(LinearLayer(num_in, num_out))
+            self._layers.append(LinearLayer(num_in, num_out, layer_num=i))
             self._layers.append(self.str_to_activation_layer(activations[i]))
 
         #######################################################################
@@ -436,6 +459,7 @@ class MultiLayerNetwork(object):
         #######################################################################
 
         for layer in self._layers:
+            # print("Updating ", layer)
             layer.update_params(learning_rate)
 
         #######################################################################
@@ -632,7 +656,7 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        self.min_max = [] # [[min, max], ... ], each element corresponds to a column
+        self.min_max = []  # [[min, max], ... ], each element corresponds to a column
         self.data = data
         self.calc_min_max_values()
 
@@ -650,7 +674,6 @@ class Preprocessor(object):
             min_val = min(colmn_vals)
             max_val = max(colmn_vals)
             self.min_max.append([min_val, max_val])
-
 
     def apply(self, data):
         """
@@ -739,15 +762,15 @@ def example_main():
         batch_size=8,
         nb_epoch=1000,
         learning_rate=0.01,
-        loss_fun="cross_entropy",
+        loss_fun="mse",
         shuffle_flag=True,
     )
 
     # All x_train and x_val have had the suffix _pre removed
 
-    trainer.train(x_train_pre, y_train)
-    print("Train loss = ", trainer.eval_loss(x_train_pre, y_train))
-    print("Validation loss = ", trainer.eval_loss(x_val_pre, y_val))
+    trainer.train(x_train, y_train)
+    print("Train loss = ", trainer.eval_loss(x_train, y_train))
+    print("Validation loss = ", trainer.eval_loss(x_val, y_val))
 
     preds = net(x_val).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
