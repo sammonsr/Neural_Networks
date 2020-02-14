@@ -178,7 +178,6 @@ class ReluLayer(Layer):
         g_prime_z = self.relu_prime(self._cache_current['x'])
         # Compute Hadamard product (element-wise)
         dl_dz = np.multiply(dl_da, g_prime_z)
-        # print("HEY!!", dl_dz)
 
         return dl_dz
 
@@ -219,9 +218,7 @@ class LinearLayer(Layer):
         #######################################################################
 
     def __str__(self):
-        return "LinearLayer #{} (In:{}, Out:{}) \n   with bias {} and \n   weights {}".format(self.layer_num, self.n_in,
-                                                                                              self.n_out, self._b,
-                                                                                              self._W)
+        return "LinearLayer #{} (In:{}, Out:{})".format(self.layer_num, self.n_in, self.n_out)
 
     def forward(self, x):
         """
@@ -274,25 +271,19 @@ class LinearLayer(Layer):
         ones_row_vector = np.ones(dl_dz.shape[0])
 
         dl_dw = np.matmul(self._cache_current['x'].T, dl_dz)
-        dl_db = np.dot(ones_row_vector, dl_dz)   #TODO: CHECK
+        dl_db = np.dot(ones_row_vector, dl_dz)
 
         # Set gradients for update_params usage
         self._grad_W_current = dl_dw
         self._grad_b_current = dl_db
 
-        if self.layer_num == 1:
-            pass#print(np.matmul(self._cache_current['x'].T, dl_dz))
-
         dl_dx = np.matmul(dl_dz, self._W.T)
 
         assert dl_dx.shape == self._cache_current['x'].shape
         assert dl_dw.shape == self._W.shape
-        if dl_db.shape != self._b.shape:
-            print("")
         assert dl_db.shape == self._b.shape
 
         return dl_dx
-
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -308,27 +299,17 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
-        old_w = self._W.copy()
+        # Save old values of b and w for assertion checks
         old_w_shape = self._W.shape
         old_b_shape = self._b.shape
+
+        # Perform gradient descent
         self._W = self._W - (learning_rate * self._grad_W_current)
         self._b = self._b - (learning_rate * self._grad_b_current)
 
-        #print("W is now ", self._W)
-        #print("b is now ", self._b)
-
-        if self.layer_num == 0:
-            pass#print("Minusing off ", (learning_rate * self._grad_b_current))
-
+        # Check that W and b haven't changed their shape
         assert self._W.shape == old_w_shape
-
         assert self._b.shape == old_b_shape
-
-        # assert not np.array_equal(old_w,self._W)
-        #if self.layer_num == 0:
-            #print("Taking off ", (self._grad_b_current))
-
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -454,7 +435,6 @@ class MultiLayerNetwork(object):
         #######################################################################
 
         for layer in self._layers:
-            # print("Updating ", layer)
             layer.update_params(learning_rate)
 
         #######################################################################
@@ -773,36 +753,10 @@ def example_main():
     print(preds)
     print(targets)
 
+    print(net)
     print("Validation accuracy: {}".format(accuracy))
 
-    print(net)
 
 
 if __name__ == "__main__":
-    # learning_rate = 0.5
-    # dat = np.loadtxt("iris.dat")
-    # np.random.shuffle(dat)
-    #
-    # x = dat[:, :4]
-    # y = dat[:, 4:]
-    #
-    # network = MultiLayerNetwork(input_dim=4, neurons=[16, 2], activations=['relu', 'sigmoid'])
-    # outputs = network(x)
-    #
-    # trainer = Trainer(
-    #     network=network,
-    #     batch_size=32,
-    #     nb_epoch=10,
-    #     learning_rate=0.01,
-    #     loss_fun="cross_entropy",
-    #     shuffle_flag=True,
-    # )
-    #
-    # trainer.train(x, y)
-    #
-    # train_loss = trainer.eval_loss(x, y)
-    #
-    # grad_loss_wrt_inputs = network.backward(grad_loss_wrt_outputs)
-    # network.update_params(learning_rate)
-
     example_main()
