@@ -206,7 +206,7 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         self._W = xavier_init((n_in, n_out))
-        self._b = xavier_init((1, n_out))
+        self._b = xavier_init(n_out)
         self.layer_num = layer_num
 
         # Dictionary of cached values
@@ -274,7 +274,7 @@ class LinearLayer(Layer):
         ones_row_vector = np.ones(dl_dz.shape[0])
 
         dl_dw = np.matmul(self._cache_current['x'].T, dl_dz)
-        dl_db = np.matmul(ones_row_vector, dl_dz)   #TODO: CHECK
+        dl_db = np.dot(ones_row_vector, dl_dz)   #TODO: CHECK
 
         # Set gradients for update_params usage
         self._grad_W_current = dl_dw
@@ -284,6 +284,13 @@ class LinearLayer(Layer):
             pass#print(np.matmul(self._cache_current['x'].T, dl_dz))
 
         dl_dx = np.matmul(dl_dz, self._W.T)
+
+        assert dl_dx.shape == self._cache_current['x'].shape
+        assert dl_dw.shape == self._W.shape
+        if dl_db.shape != self._b.shape:
+            print("")
+        assert dl_db.shape == self._b.shape
+
         return dl_dx
 
         #######################################################################
@@ -593,9 +600,9 @@ class Trainer(object):
                 # Forward pass for batch
                 predictions = self.network.forward(input)
                 # Compute loss
-                loss = self.eval_loss(input_dataset, target_dataset)
+                self.eval_loss(input_dataset, target_dataset)
                 # Perform backward pass
-                self.network.backward(loss)
+                self.network.backward(self._loss_layer.backward())
                 # Perform one step of gradient descent
                 self.network.update_params(self.learning_rate)
 
