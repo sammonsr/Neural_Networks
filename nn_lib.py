@@ -717,13 +717,11 @@ def example_main():
         shuffle_flag=True,
     )
 
-    # All x_train and x_val have had the suffix _pre removed
+    trainer.train(x_train_pre, y_train)
+    print("Train loss = ", trainer.eval_loss(x_train_pre, y_train))
+    print("Validation loss = ", trainer.eval_loss(x_val_pre, y_val))
 
-    trainer.train(x_train, y_train)
-    print("Train loss = ", trainer.eval_loss(x_train, y_train))
-    print("Validation loss = ", trainer.eval_loss(x_val, y_val))
-
-    preds = net(x_val).argmax(axis=1).squeeze()
+    preds = net(x_val_pre).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
     accuracy = (preds == targets).mean()
     print(preds)
@@ -731,8 +729,6 @@ def example_main():
 
     print(net)
     print("Validation accuracy: {}".format(accuracy))
-
-
 
 if __name__ == "__main__":
     example_main()
