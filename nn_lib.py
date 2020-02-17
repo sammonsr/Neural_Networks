@@ -631,24 +631,14 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        self.min_max = []  # [[min, max], ... ], each element corresponds to a column
         self.data = data
-        self.calc_min_max_values()
+
+        self.col_mins = np.amin(data, axis=0)
+        self.col_maxs = np.amax(data, axis=0)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
-
-    def calc_min_max_values(self):
-        # Reset min_max list
-        self.min_max = []
-        # Loop through all columns
-        for i in range(len(self.data[0])):
-            # Get all values for this column, work out the min and max, and store that in the min_max list
-            colmn_vals = [row[i] for row in self.data]
-            min_val = min(colmn_vals)
-            max_val = max(colmn_vals)
-            self.min_max.append([min_val, max_val])
 
     def apply(self, data):
         """
@@ -663,16 +653,11 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        result = data.copy()
-        for row in result:
-            # Go through each column in this row and normalize the value
-            for i in range(len(row)):
-                # Normalize value using formula v' = (v - min) / (max - min)
-                min = self.min_max[i][0]
-                max = self.min_max[i][1]
-                row[i] = (row[i] - self.min_max[i][0]) / (self.min_max[i][1] - self.min_max[i][0])
 
-        return result
+        #TODO: we do scale compared to the original data right passed in at init, right?
+
+        # Scale between 0 and 1
+        return (data - self.col_mins) / (self.col_maxs - self.col_mins)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -692,16 +677,7 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        result = data.copy()
-        for row in result:
-            # Go through each column in this row and normalize the value
-            for i in range(len(row)):
-                # Revert to original value using formula v = v'(max- min) + min
-                min = self.min_max[i][0]
-                max = self.min_max[i][1]
-                row[i] = (row[i] * (max - min)) + min
-
-        return result
+        return data * (self.col_maxs - self.col_mins) + self.col_mins
 
         #######################################################################
         #                       ** END OF YOUR CODE **
