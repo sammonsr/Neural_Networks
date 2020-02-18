@@ -654,7 +654,6 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        #TODO: we do scale compared to the original data right passed in at init, right?
 
         # Scale between 0 and 1
         return (data - self.col_mins) / (self.col_maxs - self.col_mins)

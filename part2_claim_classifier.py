@@ -1,11 +1,18 @@
+from collections import OrderedDict
+
 import numpy as np
 import pickle
 
 import torch
 from torch import nn
+from sklearn import metrics
 
 
-class ClaimClassifier():
+class ClaimClassifier:
+    # Hyperparameters
+    EPOCHS = 10
+    LEARNING_RATE = 0.001
+    BATCH_SIZE = 8
 
     def __init__(self, num_layers=3, neurons_per_layer=3):
         """
@@ -14,7 +21,9 @@ class ClaimClassifier():
         """
         self.num_layers = num_layers
         self.neurons_per_layer = neurons_per_layer
-        pass
+        self.col_mins = []
+        self.col_maxs = []
+        self.network = None
 
     def _preprocessor(self, X_raw):
         """Data preprocessing function.
@@ -32,9 +41,8 @@ class ClaimClassifier():
         ndarray
             A clean data set that is used for training and prediction.
         """
-        # YOUR CODE HERE
 
-        return  # YOUR CLEAN DATA AS A NUMPY ARRAY
+        return (X_raw - self.col_mins) / (self.col_maxs - self.col_mins)
 
     def _xavier_init(self, size, gain=1.0):
         """
@@ -47,11 +55,13 @@ class ClaimClassifier():
     def _init_weights(self, layer):
         rows, cols = layer.weight.data.shape
         random_weight = self._xavier_init((rows, cols))
-        layer.weight.data = torch.as_tensor(random_weight)
+        layer.weight.data = torch.as_tensor(random_weight).float()
 
-    def load_data(self, filename, has_header=True):
+    def load_data(self, filename, has_header=True, shuffle=False):
         skip_rows = 1 if has_header else 0
         data = np.loadtxt(filename, delimiter=',', skiprows=skip_rows)
+        if shuffle:
+            np.random.shuffle(data)
         # Split into x and y
         X, y = np.split(data, [-1], axis=1)
         return X, y
@@ -86,20 +96,47 @@ class ClaimClassifier():
 
         assert num_inputs == 9
         assert num_outputs == 1
-        layers = self.create_net_layers(num_inputs, num_outputs)
+        self.network = self.create_network(num_inputs, num_outputs)
 
-        # REMEMBER TO HAVE THE FOLLOWING LINE SOMEWHERE IN THE CODE
-        # X_clean = self._preprocessor(X_raw)
-        # YOUR CODE HERE
-        pass
+        # Train neural network
 
-    def create_net_layers(self, num_inputs, num_outputs):
+        # binary cross entropy loss
+        loss_fun = torch.nn.BCELoss()
+
+        # Adam optimizer
+        opt = torch.optim.Adam(self.network.parameters(), lr=self.LEARNING_RATE)
+
+        # Preprocess X
+        X_clean = self._preprocessor(X_raw)
+
+        # Convert X and Y to tensor floats
+        X_clean = torch.as_tensor(X_clean).float()
+        y_raw = torch.as_tensor(y_raw).float()
+
+        # Shuffle data for batching
+        permutation = torch.randperm(X_clean.size()[0])
+
+        # training
+        for epoch in range(self.EPOCHS):
+            print('at epoch ', epoch)
+            for i in range(0, X_clean.size()[0], self.BATCH_SIZE):
+                indices = permutation[i:i + self.BATCH_SIZE]
+                batch_x, batch_y = X_clean[indices], y_raw[indices].view(self.BATCH_SIZE)
+
+                opt.zero_grad()
+                y_pred_val = self.network(batch_x.float()).view(self.BATCH_SIZE)
+                loss = loss_fun(y_pred_val, batch_y)
+                loss.backward()
+                opt.step()
+
+    def create_network(self, num_inputs, num_outputs):
         layers = []
 
         # Input layer
         layer = nn.Linear(num_inputs, self.neurons_per_layer)
         self._init_weights(layer)
         layers.append(("lin1", layer))
+        layers.append(("relu1", nn.ReLU()))
 
         # Hidden layers
         for i in range(2, self.num_layers):
@@ -107,16 +144,18 @@ class ClaimClassifier():
             self._init_weights(layer)
             layer_name = "lin{}".format(i)
             layers.append((layer_name, layer))
+            layers.append(("relu{}".format(i), nn.ReLU()))
 
         # Output layer
         layer = nn.Linear(self.neurons_per_layer, num_outputs)
         self._init_weights(layer)
         layer_name = "lin{}".format(self.num_layers)
         layers.append((layer_name, layer))
+        layers.append(("sig{}".format(self.num_layers), nn.Sigmoid()))
 
         print(layers)
 
-        return layers
+        return nn.Sequential(OrderedDict(layers))
 
     def predict(self, X_raw):
         """Classifier probability prediction function.
@@ -136,12 +175,12 @@ class ClaimClassifier():
             POSITIVE class (that had accidents)
         """
 
-        # REMEMBER TO HAVE THE FOLLOWING LINE SOMEWHERE IN THE CODE
-        # X_clean = self._preprocessor(X_raw)
+        X_clean = torch.as_tensor(self._preprocessor(X_raw)).float()
 
-        # YOUR CODE HERE
+        self.network.eval()
 
-        return  # YOUR PREDICTED CLASS LABELS
+        return self.network(X_clean).detach().numpy().astype('int')
+
 
     def evaluate_architecture(self):
         """Architecture evaluation utility.
@@ -180,13 +219,34 @@ def ClaimClassifierHyperParameterSearch():
     return  # Return the chosen hyper parameters
 
 
+def get_train_test_split(X_raw, y_raw):
+    split_point = int(0.8 * total_rows)
+    train_X_raw = np.array(X_raw[: split_point])
+    train_y_raw = np.array(y_raw[: split_point])
+    test_X_raw = np.array(X_raw[split_point:])
+    test_y_raw = np.array(y_raw[split_point:])
+
+    return train_X_raw, train_y_raw, test_X_raw, test_y_raw
+
+
 if __name__ == "__main__":
     classifier = ClaimClassifier()
 
-    X_raw, y_raw = classifier.load_data('part2_training_data.csv')
+    X_raw, y_raw = classifier.load_data('part2_training_data.csv', shuffle=True)
     # Remove 'claim_amount' column
     claim_amount_col_index = 9
     X_raw = classifier.remove_colmn(X_raw, claim_amount_col_index)
 
+    total_rows = len(X_raw)
+
+    train_X_raw, train_y_raw, test_X_raw, test_y_raw = get_train_test_split(X_raw, y_raw)
+
     # Train network
-    model = classifier.fit(X_raw, y_raw)
+    classifier.fit(X_raw, y_raw)
+
+    # Evaluate
+    predictions = classifier.predict(test_X_raw)
+    confusion_matrix = metrics.confusion_matrix(test_y_raw, predictions)
+    report = metrics.classification_report(test_y_raw, predictions)
+    print(confusion_matrix)
+    print(report)
