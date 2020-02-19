@@ -13,13 +13,15 @@ class ClaimClassifier:
     def __init__(self, num_layers, neurons_per_layer, num_epochs, learning_rate, batch_size):
         """
         Feel free to alter this as you wish, adding instance variables as
-        necessary. 
+        necessary.
         """
         use_cuda = torch.cuda.is_available()
         if use_cuda:
             torch.backends.cudnn.benchmark = True
         self.device = torch.device("cuda" if use_cuda else "cpu")
-        print("Use cuda", use_cuda)
+
+        # Force use of cpu for now
+        self.device = "cpu"
 
         self.network = None
 
@@ -109,8 +111,8 @@ class ClaimClassifier:
         X_clean = self._preprocessor(X_raw)
 
         # Convert X and Y to tensor floats
-        X_clean = torch.as_tensor(X_clean).float()
-        y_raw = torch.as_tensor(y_raw).float()
+        X_clean = torch.as_tensor(X_clean).float().to(self.device)
+        y_raw = torch.as_tensor(y_raw).float().to(self.device)
 
         # Shuffle data for batching
         permutation = torch.randperm(X_clean.size()[0])
@@ -187,7 +189,7 @@ class ClaimClassifier:
 
         self.network.eval()
 
-        return self.network(X_clean).detach().numpy().astype('int')
+        return self.network(X_clean).cpu().detach().numpy().astype('int')
 
     def evaluate_architecture(self, X_test, y_test, verbose=True):
         """Architecture evaluation utility.
@@ -231,9 +233,9 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     """Performs a hyper-parameter for fine-tuning the classifier.
 
     Implement a function that performs a hyper-parameter search for your
-    architecture as implemented in the ClaimClassifier class. 
+    architecture as implemented in the ClaimClassifier class.
 
-    The function should return your optimised hyper-parameters. 
+    The function should return your optimised hyper-parameters.
     """
 
     num_layer_space = list(range(2, 6))
@@ -305,10 +307,10 @@ if __name__ == "__main__":
     X_raw, y_raw = load_data(shuffle=True)
     train_X_raw, train_y_raw, test_X_raw, test_y_raw = get_train_test_split(X_raw, y_raw)
 
-    best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
-    print("Best params: \n", best_hyper_params)
+    # best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
+    # print("Best params: \n", best_hyper_params)
 
-    classifier = ClaimClassifier(num_layers=2, neurons_per_layer=1, num_epochs=1, learning_rate=0.1, batch_size=8)
+    classifier = ClaimClassifier(num_layers=3, neurons_per_layer=3, num_epochs=5, learning_rate=0.1, batch_size=8)
 
     # Train network
     classifier.fit(train_X_raw, train_y_raw)
