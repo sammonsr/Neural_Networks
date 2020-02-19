@@ -116,10 +116,14 @@ class ClaimClassifier:
         # Shuffle data for batching
         permutation = torch.randperm(X_clean.size()[0])
 
+        # keeping the network in training mode
+        self.network.train()
+
         # training
         for epoch in range(self.EPOCHS):
             print('at epoch ', epoch)
             for i in range(0, X_clean.size()[0], self.BATCH_SIZE):
+                # TODO: make sure not missing anything
                 indices = permutation[i:i + self.BATCH_SIZE]
                 batch_x, batch_y = X_clean[indices], y_raw[indices].view(self.BATCH_SIZE)
 
@@ -181,7 +185,6 @@ class ClaimClassifier:
 
         return self.network(X_clean).detach().numpy().astype('int')
 
-
     def evaluate_architecture(self):
         """Architecture evaluation utility.
 
@@ -191,6 +194,16 @@ class ClaimClassifier:
         You can use external libraries such as scikit-learn for this
         if necessary.
         """
+        predictions = classifier.predict(test_X_raw)
+        confusion_matrix = metrics.confusion_matrix(test_y_raw, predictions)
+        norm_confusion_matrix = metrics.confusion_matrix(test_y_raw, predictions, normalize='true')
+        report = metrics.classification_report(test_y_raw, predictions)
+        print("Confusion matrix:")
+        print(confusion_matrix)
+        print("\nNormalized Confusion matrix:")
+        print(norm_confusion_matrix)
+        print(report)
+
         pass
 
     def save_model(self):
@@ -245,8 +258,4 @@ if __name__ == "__main__":
     classifier.fit(X_raw, y_raw)
 
     # Evaluate
-    predictions = classifier.predict(test_X_raw)
-    confusion_matrix = metrics.confusion_matrix(test_y_raw, predictions)
-    report = metrics.classification_report(test_y_raw, predictions)
-    print(confusion_matrix)
-    print(report)
+    classifier.evaluate_architecture()
