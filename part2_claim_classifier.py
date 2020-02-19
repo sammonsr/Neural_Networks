@@ -9,21 +9,28 @@ from sklearn import metrics
 
 
 class ClaimClassifier:
-    # Hyperparameters
-    EPOCHS = 10
-    LEARNING_RATE = 0.001
-    BATCH_SIZE = 8
 
-    def __init__(self, num_layers=3, neurons_per_layer=3):
+    def __init__(self, num_layers, neurons_per_layer, num_epochs, learning_rate, batch_size):
         """
         Feel free to alter this as you wish, adding instance variables as
         necessary. 
         """
+        self.network = None
+
+        # Hyperparameters
         self.num_layers = num_layers
+        self.num_epochs = num_epochs
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
         self.neurons_per_layer = neurons_per_layer
+
+        # Preprocessing
         self.col_mins = []
         self.col_maxs = []
-        self.network = None
+
+    def __str__(self):
+        return "ClaimClassifier(num_layers = {}, num_epochs={}, lr={}, batch_size={}, neurons_per_layer={})".format(
+            self.num_layers, self.num_epochs, self.learning_rate, self.batch_size, self.neurons_per_layer)
 
     def _preprocessor(self, X_raw):
         """Data preprocessing function.
@@ -56,18 +63,6 @@ class ClaimClassifier:
         rows, cols = layer.weight.data.shape
         random_weight = self._xavier_init((rows, cols))
         layer.weight.data = torch.as_tensor(random_weight).float()
-
-    def load_data(self, filename, has_header=True, shuffle=False):
-        skip_rows = 1 if has_header else 0
-        data = np.loadtxt(filename, delimiter=',', skiprows=skip_rows)
-        if shuffle:
-            np.random.shuffle(data)
-        # Split into x and y
-        X, y = np.split(data, [-1], axis=1)
-        return X, y
-
-    def remove_colmn(self, X, index):
-        return np.delete(X, [index], axis=1)
 
     def fit(self, X_raw, y_raw):
         """Classifier training function.
@@ -104,7 +99,7 @@ class ClaimClassifier:
         loss_fun = torch.nn.BCELoss()
 
         # Adam optimizer
-        opt = torch.optim.Adam(self.network.parameters(), lr=self.LEARNING_RATE)
+        opt = torch.optim.Adam(self.network.parameters(), lr=self.learning_rate)
 
         # Preprocess X
         X_clean = self._preprocessor(X_raw)
@@ -120,15 +115,15 @@ class ClaimClassifier:
         self.network.train()
 
         # training
-        for epoch in range(self.EPOCHS):
+        for epoch in range(self.num_epochs):
             print('at epoch ', epoch)
-            for i in range(0, X_clean.size()[0], self.BATCH_SIZE):
+            for i in range(0, X_clean.size()[0], self.batch_size):
                 # TODO: make sure not missing anything
-                indices = permutation[i:i + self.BATCH_SIZE]
-                batch_x, batch_y = X_clean[indices], y_raw[indices].view(self.BATCH_SIZE)
+                indices = permutation[i:i + self.batch_size]
+                batch_x, batch_y = X_clean[indices], y_raw[indices].view(self.batch_size)
 
                 opt.zero_grad()
-                y_pred_val = self.network(batch_x.float()).view(self.BATCH_SIZE)
+                y_pred_val = self.network(batch_x.float()).view(self.batch_size)
                 loss = loss_fun(y_pred_val, batch_y)
                 loss.backward()
                 opt.step()
@@ -157,8 +152,6 @@ class ClaimClassifier:
         layers.append((layer_name, layer))
         layers.append(("sig{}".format(self.num_layers), nn.Sigmoid()))
 
-        print(layers)
-
         return nn.Sequential(OrderedDict(layers))
 
     def predict(self, X_raw):
@@ -185,7 +178,7 @@ class ClaimClassifier:
 
         return self.network(X_clean).detach().numpy().astype('int')
 
-    def evaluate_architecture(self):
+    def evaluate_architecture(self, X_test, y_test, verbose=True):
         """Architecture evaluation utility.
 
         Populate this function with evaluation utilities for your
@@ -194,17 +187,20 @@ class ClaimClassifier:
         You can use external libraries such as scikit-learn for this
         if necessary.
         """
-        predictions = classifier.predict(test_X_raw)
-        confusion_matrix = metrics.confusion_matrix(test_y_raw, predictions)
-        norm_confusion_matrix = metrics.confusion_matrix(test_y_raw, predictions, normalize='true')
-        report = metrics.classification_report(test_y_raw, predictions)
-        print("Confusion matrix:")
-        print(confusion_matrix)
-        print("\nNormalized Confusion matrix:")
-        print(norm_confusion_matrix)
-        print(report)
+        predictions = self.predict(X_test)
 
-        pass
+        if verbose:
+            confusion_matrix = metrics.confusion_matrix(y_test, predictions)
+            norm_confusion_matrix = metrics.confusion_matrix(y_test, predictions, normalize='true')
+            report = metrics.classification_report(y_test, predictions)
+
+            print("Confusion matrix:")
+            print(confusion_matrix)
+            print("\nNormalized Confusion matrix:")
+            print(norm_confusion_matrix)
+            print(report)
+
+        return metrics.f1_score(y_test, predictions, average='macro')
 
     def save_model(self):
         # Please alter this file appropriately to work in tandem with your load_model function below
@@ -220,7 +216,7 @@ def load_model():
 
 
 # ENSURE TO ADD IN WHATEVER INPUTS YOU DEEM NECESSARRY TO THIS FUNCTION
-def ClaimClassifierHyperParameterSearch():
+def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     """Performs a hyper-parameter for fine-tuning the classifier.
 
     Implement a function that performs a hyper-parameter search for your
@@ -229,10 +225,42 @@ def ClaimClassifierHyperParameterSearch():
     The function should return your optimised hyper-parameters. 
     """
 
-    return  # Return the chosen hyper parameters
+    num_layer_space = list(range(2, 6))
+    neurons_per_layer_space = list(range(1, 6))
+    num_epochs_space = list(range(1, 6))
+    lr_space = [10 ** - i for i in range(1, 5)]
+    batch_size_space = [2 ** i for i in range(3, 8)]
+
+    best_model = None
+    best_score = -1
+
+    for num_layers in num_layer_space:
+        for neurons_per_layer in neurons_per_layer_space:
+            for num_epochs in num_epochs_space:
+                for lr in lr_space:
+                    for batch_size in batch_size_space:
+                        print("\n\n\n==========================================================")
+
+                        model = ClaimClassifier(num_layers, neurons_per_layer, num_epochs, lr, batch_size)
+
+                        print("Evaluating", model)
+
+                        model.fit(X_train, y_train)
+
+                        score = model.evaluate_architecture(X_test, y_test, verbose=False)
+
+                        print(model, "score =", score)
+                        print("==========================================================")
+
+                        if score > best_score:
+                            best_model = model
+                            best_score = score
+
+    return str(best_model)
 
 
 def get_train_test_split(X_raw, y_raw):
+    total_rows = len(X_raw)
     split_point = int(0.8 * total_rows)
     train_X_raw = np.array(X_raw[: split_point])
     train_y_raw = np.array(y_raw[: split_point])
@@ -242,20 +270,36 @@ def get_train_test_split(X_raw, y_raw):
     return train_X_raw, train_y_raw, test_X_raw, test_y_raw
 
 
-if __name__ == "__main__":
-    classifier = ClaimClassifier()
+def remove_column(X, index):
+    return np.delete(X, [index], axis=1)
 
-    X_raw, y_raw = classifier.load_data('part2_training_data.csv', shuffle=True)
+
+def load_data(has_header=True, shuffle=False):
+    filename = 'part2_training_data.csv'
+    skip_rows = 1 if has_header else 0
+    data = np.loadtxt(filename, delimiter=',', skiprows=skip_rows)
+    if shuffle:
+        np.random.shuffle(data)
+    # Split into x and y
+    X, y = np.split(data, [-1], axis=1)
+
     # Remove 'claim_amount' column
     claim_amount_col_index = 9
-    X_raw = classifier.remove_colmn(X_raw, claim_amount_col_index)
+    X = remove_column(X, claim_amount_col_index)
+    return X, y
 
-    total_rows = len(X_raw)
 
+if __name__ == "__main__":
+    # Load data
+    X_raw, y_raw = load_data(shuffle=True)
     train_X_raw, train_y_raw, test_X_raw, test_y_raw = get_train_test_split(X_raw, y_raw)
 
+    ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
+
+    classifier = ClaimClassifier(num_layers=2, neurons_per_layer=1, num_epochs=1, learning_rate=0.1, batch_size=8)
+
     # Train network
-    classifier.fit(X_raw, y_raw)
+    classifier.fit(train_X_raw, train_y_raw)
 
     # Evaluate
-    classifier.evaluate_architecture()
+    classifier.evaluate_architecture(test_X_raw, test_y_raw)
