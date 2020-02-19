@@ -15,6 +15,12 @@ class ClaimClassifier:
         Feel free to alter this as you wish, adding instance variables as
         necessary. 
         """
+        use_cuda = torch.cuda.is_available()
+        if use_cuda:
+            torch.backends.cudnn.benchmark = True
+        self.device = torch.device("cuda" if use_cuda else "cpu")
+        print("Use cuda", use_cuda)
+
         self.network = None
 
         # Hyperparameters
@@ -93,10 +99,8 @@ class ClaimClassifier:
         assert num_outputs == 1
         self.network = self.create_network(num_inputs, num_outputs)
 
-        # Train neural network
-
         # binary cross entropy loss
-        loss_fun = torch.nn.BCELoss()
+        loss_fun = torch.nn.BCELoss().to(self.device)
 
         # Adam optimizer
         opt = torch.optim.Adam(self.network.parameters(), lr=self.learning_rate)
@@ -121,6 +125,10 @@ class ClaimClassifier:
                 # TODO: make sure not missing anything
                 indices = permutation[i:i + self.batch_size]
                 batch_x, batch_y = X_clean[indices], y_raw[indices].view(self.batch_size)
+
+                # Setup batches to use GPU if available
+                batch_x = batch_x.to(self.device)
+                batch_y = batch_y.to(self.device)
 
                 opt.zero_grad()
                 y_pred_val = self.network(batch_x.float()).view(self.batch_size)
@@ -152,7 +160,7 @@ class ClaimClassifier:
         layers.append((layer_name, layer))
         layers.append(("sig{}".format(self.num_layers), nn.Sigmoid()))
 
-        return nn.Sequential(OrderedDict(layers))
+        return nn.Sequential(OrderedDict(layers)).to(self.device)
 
     def predict(self, X_raw):
         """Classifier probability prediction function.
@@ -173,6 +181,9 @@ class ClaimClassifier:
         """
 
         X_clean = torch.as_tensor(self._preprocessor(X_raw)).float()
+
+        # Setup data to use GPU if available
+        X_clean = X_clean.to(self.device)
 
         self.network.eval()
 
@@ -294,7 +305,8 @@ if __name__ == "__main__":
     X_raw, y_raw = load_data(shuffle=True)
     train_X_raw, train_y_raw, test_X_raw, test_y_raw = get_train_test_split(X_raw, y_raw)
 
-    ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
+    best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
+    print("Best params: \n", best_hyper_params)
 
     classifier = ClaimClassifier(num_layers=2, neurons_per_layer=1, num_epochs=1, learning_rate=0.1, batch_size=8)
 
