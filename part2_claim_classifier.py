@@ -23,7 +23,7 @@ class ClaimClassifier:
         self.device = torch.device("cuda" if use_cuda else "cpu")
 
         # Force use of cpu for now
-        self.device = "cpu"
+        # self.device = "cpu"
 
         self.network = None
 
