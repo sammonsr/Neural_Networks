@@ -5,7 +5,6 @@ import numpy as np
 import pickle
 
 import torch
-from imblearn.under_sampling import RandomUnderSampler
 from torch import nn
 from sklearn import metrics, preprocessing
 
@@ -293,6 +292,8 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     total_num_possible = len(num_layer_space) * len(neurons_per_layer_space) * len(num_epochs_space) * len(
         lr_space) * len(batch_size_space)
 
+    current_itr = 0
+
     for num_layers in num_layer_space:
         for neurons_per_layer in neurons_per_layer_space:
             for num_epochs in num_epochs_space:
@@ -316,7 +317,7 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
                         if score > best_score:
                             best_model = model
                             best_score = score
-
+                        current_itr = current_itr + 1
     return str(best_model)
 
 
