@@ -1,11 +1,13 @@
+import math
 from collections import OrderedDict
 
 import numpy as np
 import pickle
 
 import torch
+from imblearn.under_sampling import RandomUnderSampler
 from torch import nn
-from sklearn import metrics
+from sklearn import metrics, preprocessing
 
 
 class ClaimClassifier:
@@ -56,6 +58,11 @@ class ClaimClassifier:
         ndarray
             A clean data set that is used for training and prediction.
         """
+        # Standardization
+        scaler = preprocessing.StandardScaler()
+
+        # Transform the feature
+        return scaler.fit_transform(X_raw)
 
         return (X_raw - self.col_mins) / (self.col_maxs - self.col_mins)
 
@@ -121,8 +128,10 @@ class ClaimClassifier:
         self.network.train()
 
         # training
+        loss_arr = np.array(())
         for epoch in range(self.num_epochs):
             print('at epoch ', epoch)
+            epoch_loss_arr = np.array(())
             for i in range(0, X_clean.size()[0], self.batch_size):
                 # TODO: make sure not missing anything
                 indices = permutation[i:i + self.batch_size]
@@ -135,8 +144,17 @@ class ClaimClassifier:
                 opt.zero_grad()
                 y_pred_val = self.network(batch_x.float()).view(self.batch_size)
                 loss = loss_fun(y_pred_val, batch_y)
+                epoch_loss_arr = np.append(epoch_loss_arr, loss.item())
+
                 loss.backward()
                 opt.step()
+            epoch_loss = epoch_loss_arr.mean()
+            loss_arr = np.append(loss_arr, epoch_loss)
+            print("Loss: ", epoch_loss)
+
+        min_index = loss_arr.argmin()
+        min_loss = loss_arr[min_index]
+        print("Minimum loss was {} at epoch {}".format(min_loss, min_index + 1))
 
     def create_network(self, num_inputs, num_outputs):
         layers = []
@@ -191,6 +209,13 @@ class ClaimClassifier:
 
         return self.network(X_clean).cpu().detach().numpy().astype('int')
 
+    '''
+    def pred_to_binary(self, X):
+        threshold = 0.4
+        func = np.vectorize(lambda a: 0.0 if a < threshold else 1.0)
+        return func(X)
+        '''
+
     def evaluate_architecture(self, X_test, y_test, verbose=True):
         """Architecture evaluation utility.
 
@@ -207,13 +232,20 @@ class ClaimClassifier:
             norm_confusion_matrix = metrics.confusion_matrix(y_test, predictions, normalize='true')
             report = metrics.classification_report(y_test, predictions)
 
+            # print(predictions)
+            # print(y_test)
+
             print("Confusion matrix:")
             print(confusion_matrix)
             print("\nNormalized Confusion matrix:")
             print(norm_confusion_matrix)
             print(report)
 
-        return metrics.f1_score(y_test, predictions, average='macro')
+        roc_area = metrics.roc_auc_score(y_test, predictions)
+        print("ROC area: ", roc_area)
+        # fpr, tpr, thresholds = metrics.roc_curve(y_test, predictions)
+
+        return roc_area
 
     def save_model(self):
         # Please alter this file appropriately to work in tandem with your load_model function below
@@ -239,7 +271,7 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     """
 
     num_layer_space = list(range(2, 6))
-    neurons_per_layer_space = list(range(1, 6))
+    neurons_per_layer_space = list(range(16, 128))
     num_epochs_space = list(range(1, 6))
     lr_space = [10 ** - i for i in range(1, 5)]
     batch_size_space = [2 ** i for i in range(3, 8)]
@@ -307,10 +339,11 @@ if __name__ == "__main__":
     X_raw, y_raw = load_data(shuffle=True)
     train_X_raw, train_y_raw, test_X_raw, test_y_raw = get_train_test_split(X_raw, y_raw)
 
-    # best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
-    # print("Best params: \n", best_hyper_params)
+    '''best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
+    print("Best params: \n", best_hyper_params)'''
 
-    classifier = ClaimClassifier(num_layers=3, neurons_per_layer=3, num_epochs=5, learning_rate=0.1, batch_size=8)
+    classifier = ClaimClassifier(num_layers=5, neurons_per_layer=100, num_epochs=50, learning_rate=0.0001,
+                                 batch_size=128)
 
     # Train network
     classifier.fit(train_X_raw, train_y_raw)
