@@ -129,11 +129,15 @@ class ClaimClassifier:
 
         # training
         loss_arr = np.array(())
+
         for epoch in range(self.num_epochs):
             print('at epoch ', epoch)
             epoch_loss_arr = np.array(())
             for i in range(0, X_clean.size()[0], self.batch_size):
                 # TODO: make sure not missing anything
+                if i + self.batch_size >= X_clean.size()[0]:
+                    break
+
                 indices = permutation[i:i + self.batch_size]
                 batch_x, batch_y = X_clean[indices], y_raw[indices].view(self.batch_size)
 
@@ -148,8 +152,15 @@ class ClaimClassifier:
 
                 loss.backward()
                 opt.step()
+
             epoch_loss = epoch_loss_arr.mean()
             loss_arr = np.append(loss_arr, epoch_loss)
+
+            if len(loss_arr) > 3:
+                should_break_out = loss_arr[-1] > loss_arr[-2] > loss_arr[-3]
+                if should_break_out:
+                    break
+
             print("Loss: ", epoch_loss)
 
         min_index = loss_arr.argmin()
@@ -207,7 +218,7 @@ class ClaimClassifier:
 
         self.network.eval()
 
-        return self.network(X_clean).cpu().detach().numpy().astype('int')
+        return self.network(X_clean).cpu().detach().numpy()
 
     '''
     def pred_to_binary(self, X):
@@ -228,9 +239,9 @@ class ClaimClassifier:
         predictions = self.predict(X_test)
 
         if verbose:
-            confusion_matrix = metrics.confusion_matrix(y_test, predictions)
-            norm_confusion_matrix = metrics.confusion_matrix(y_test, predictions, normalize='true')
-            report = metrics.classification_report(y_test, predictions)
+            confusion_matrix = metrics.confusion_matrix(y_test, predictions.astype('int'))
+            norm_confusion_matrix = metrics.confusion_matrix(y_test, predictions.astype('int'), normalize='true')
+            report = metrics.classification_report(y_test, predictions.astype('int'))
 
             # print(predictions)
             # print(y_test)
@@ -270,14 +281,17 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     The function should return your optimised hyper-parameters.
     """
 
-    num_layer_space = list(range(2, 6))
-    neurons_per_layer_space = list(range(16, 128))
-    num_epochs_space = list(range(1, 6))
+    num_layer_space = list(range(3, 15))
+    neurons_per_layer_space = list(range(5, 95, 10))
+    num_epochs_space = list(range(10, 1000, 10))
     lr_space = [10 ** - i for i in range(1, 5)]
     batch_size_space = [2 ** i for i in range(3, 8)]
 
     best_model = None
     best_score = -1
+
+    total_num_possible = len(num_layer_space) * len(neurons_per_layer_space) * len(num_epochs_space) * len(
+        lr_space) * len(batch_size_space)
 
     for num_layers in num_layer_space:
         for neurons_per_layer in neurons_per_layer_space:
@@ -285,6 +299,8 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
                 for lr in lr_space:
                     for batch_size in batch_size_space:
                         print("\n\n\n==========================================================")
+                        print("Progress: {}/{}".format(current_itr, total_num_possible))
+                        print("==========================================================")
 
                         model = ClaimClassifier(num_layers, neurons_per_layer, num_epochs, lr, batch_size)
 
@@ -304,15 +320,18 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     return str(best_model)
 
 
-def get_train_test_split(X_raw, y_raw):
+def get_data_split(X_raw, y_raw):
     total_rows = len(X_raw)
-    split_point = int(0.8 * total_rows)
-    train_X_raw = np.array(X_raw[: split_point])
-    train_y_raw = np.array(y_raw[: split_point])
-    test_X_raw = np.array(X_raw[split_point:])
-    test_y_raw = np.array(y_raw[split_point:])
+    split_point_1 = int(0.6 * total_rows)
+    split_point_2 = int(0.8 * total_rows)
+    train_X_raw = np.array(X_raw[: split_point_1])
+    train_y_raw = np.array(y_raw[: split_point_1])
+    test_X_raw = np.array(X_raw[split_point_1:split_point_2])
+    test_y_raw = np.array(y_raw[split_point_1:split_point_2])
+    validation_X_raw = np.array(X_raw[split_point_2:])
+    validation_y_raw = np.array(y_raw[split_point_2:])
 
-    return train_X_raw, train_y_raw, test_X_raw, test_y_raw
+    return train_X_raw, train_y_raw, test_X_raw, test_y_raw, validation_X_raw, validation_y_raw
 
 
 def remove_column(X, index):
@@ -337,16 +356,18 @@ def load_data(has_header=True, shuffle=False):
 if __name__ == "__main__":
     # Load data
     X_raw, y_raw = load_data(shuffle=True)
-    train_X_raw, train_y_raw, test_X_raw, test_y_raw = get_train_test_split(X_raw, y_raw)
+    train_X_raw, train_y_raw, test_X_raw, test_y_raw, validation_X_raw, validation_y_raw = get_data_split(X_raw,
+                                                                                                          y_raw)
 
-    '''best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, test_y_raw)
-    print("Best params: \n", best_hyper_params)'''
+    best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,
+                                                            validation_y_raw)
+    print("Best params: \n", best_hyper_params)
 
-    classifier = ClaimClassifier(num_layers=5, neurons_per_layer=100, num_epochs=50, learning_rate=0.0001,
+    classifier = ClaimClassifier(num_layers=10, neurons_per_layer=100, num_epochs=5, learning_rate=0.0001,
                                  batch_size=128)
 
     # Train network
-    classifier.fit(train_X_raw, train_y_raw)
+    # classifier.fit(train_X_raw, train_y_raw)
 
     # Evaluate
-    classifier.evaluate_architecture(test_X_raw, test_y_raw)
+    # classifier.evaluate_architecture(test_X_raw, test_y_raw)
