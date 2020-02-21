@@ -1,5 +1,6 @@
 import math
 from collections import OrderedDict
+import random
 
 import numpy as np
 import pickle
@@ -281,10 +282,15 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     """
 
     num_layer_space = list(range(3, 15))
+    random.shuffle(num_layer_space)
     neurons_per_layer_space = list(range(5, 95, 10))
-    num_epochs_space = list(range(10, 1000, 10))
+    random.shuffle(neurons_per_layer_space)
+    num_epochs_space = list(range(25, 1000, 25))
+    random.shuffle(num_epochs_space)
     lr_space = [10 ** - i for i in range(1, 5)]
+    random.shuffle(lr_space)
     batch_size_space = [2 ** i for i in range(3, 8)]
+    random.shuffle(batch_size_space)
 
     best_model = None
     best_score = -1
@@ -294,31 +300,34 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
 
     current_itr = 0
 
-    for num_layers in num_layer_space:
-        for neurons_per_layer in neurons_per_layer_space:
-            for num_epochs in num_epochs_space:
-                for lr in lr_space:
-                    for batch_size in batch_size_space:
-                        print("\n\n\n==========================================================")
-                        print("Progress: {}/{}".format(current_itr, total_num_possible))
-                        print("==========================================================")
+    try:
+        for num_layers in num_layer_space:
+            for neurons_per_layer in neurons_per_layer_space:
+                for num_epochs in num_epochs_space:
+                    for lr in lr_space:
+                        for batch_size in batch_size_space:
+                            print("\n\n\n==========================================================")
+                            print("Progress: {}/{}".format(current_itr, total_num_possible))
+                            print("==========================================================")
 
-                        model = ClaimClassifier(num_layers, neurons_per_layer, num_epochs, lr, batch_size)
+                            model = ClaimClassifier(num_layers, neurons_per_layer, num_epochs, lr, batch_size)
 
-                        print("Evaluating", model)
+                            print("Evaluating", model)
 
-                        model.fit(X_train, y_train)
+                            model.fit(X_train, y_train)
 
-                        score = model.evaluate_architecture(X_test, y_test, verbose=False)
+                            score = model.evaluate_architecture(X_test, y_test, verbose=False)
 
-                        print(model, "score =", score)
-                        print("==========================================================")
+                            print(model, "score =", score)
+                            print("==========================================================")
 
-                        if score > best_score:
-                            best_model = model
-                            best_score = score
-                        current_itr = current_itr + 1
-    return str(best_model)
+                            if score > best_score:
+                                best_model = model
+                                best_score = score
+                            current_itr = current_itr + 1
+    except KeyboardInterrupt:
+        print("\n\n\nInterruped at {}/{}".format(current_itr, total_num_possible))
+    return str(best_model) + "\nWith score: {}".format(best_score)
 
 
 def get_data_split(X_raw, y_raw):
