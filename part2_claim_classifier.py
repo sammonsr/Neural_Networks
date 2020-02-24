@@ -23,7 +23,7 @@ class ClaimClassifier:
         self.device = torch.device("cuda" if use_cuda else "cpu")
 
         # Force use of cpu for now
-        # self.device = "cpu"
+        self.device = "cpu"
 
         self.network = None
 
@@ -159,6 +159,7 @@ class ClaimClassifier:
             if len(loss_arr) > 3:
                 should_break_out = loss_arr[-1] > loss_arr[-2] > loss_arr[-3]
                 if should_break_out:
+                    print("  Early stopping at epoch ", epoch)
                     break
 
             print("Loss: ", epoch_loss)
@@ -280,16 +281,16 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
 
     The function should return your optimised hyper-parameters.
     """
-
-    num_layer_space = list(range(3, 15))
+    # 0.649 best ROC so far: (11, 25, 800, 0.001, 8)
+    num_layer_space = list(range(9, 13))
     random.shuffle(num_layer_space)
-    neurons_per_layer_space = list(range(5, 95, 10))
+    neurons_per_layer_space = list(range(20, 31))
     random.shuffle(neurons_per_layer_space)
-    num_epochs_space = list(range(25, 1000, 25))
+    num_epochs_space = [800]#list(range(25, 1000, 25))
     random.shuffle(num_epochs_space)
-    lr_space = [10 ** - i for i in range(1, 5)]
+    lr_space = [10 ** - i for i in range(3, 5)]
     random.shuffle(lr_space)
-    batch_size_space = [2 ** i for i in range(3, 8)]
+    batch_size_space = [128]
     random.shuffle(batch_size_space)
 
     best_model = None
