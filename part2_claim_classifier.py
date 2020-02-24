@@ -61,10 +61,14 @@ class ClaimClassifier:
         # Standardization
         scaler = preprocessing.StandardScaler()
 
+        # Remove 'claim_amount' column
+        claim_amount_col_index = 9
+        X_raw = remove_column(X_raw, claim_amount_col_index)
+
         # Transform the feature
         return scaler.fit_transform(X_raw)
 
-        return (X_raw - self.col_mins) / (self.col_maxs - self.col_mins)
+        # return (X_raw - self.col_mins) / (self.col_maxs - self.col_mins)
 
     def _xavier_init(self, size, gain=1.0):
         """
@@ -358,9 +362,6 @@ def load_data(has_header=True, shuffle=False):
     # Split into x and y
     X, y = np.split(data, [-1], axis=1)
 
-    # Remove 'claim_amount' column
-    claim_amount_col_index = 9
-    X = remove_column(X, claim_amount_col_index)
     return X, y
 
 
