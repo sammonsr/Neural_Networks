@@ -3,6 +3,8 @@ from sklearn.model_selection import train_test_split
 import pickle
 import numpy as np
 
+import part2_claim_classifier
+
 
 def fit_and_calibrate_classifier(classifier, X, y):
     # DO NOT ALTER THIS FUNCTION
@@ -40,7 +42,7 @@ class PricingModel():
         # If you wish to use the classifier in part 2, you will need
         # to implement a predict_proba for it before use
         # =============================================================
-        self.base_classifier = None # ADD YOUR BASE CLASSIFIER HERE
+        self.base_classifier = part2_claim_classifier.load_model()
 
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
@@ -62,6 +64,9 @@ class PricingModel():
         """
         # =============================================================
         # YOUR CODE HERE
+
+        # One hot encoding method: For a string column, get unique values, sort alphabetically, then use labelbinarizer
+        # to set correct cols to 1 or 0
 
         return  # YOUR CLEAN DATA AS A NUMPY ARRAY
 

@@ -105,7 +105,10 @@ class ClaimClassifier:
         self.col_mins = np.amin(X_raw, axis=0)
         self.col_maxs = np.amax(X_raw, axis=0)
 
-        num_inputs = len(X_raw[0])
+        # Preprocess X
+        X_clean = self._preprocessor(X_raw)
+
+        num_inputs = len(X_clean[0])
         num_outputs = y_raw.shape[1]
 
         assert num_inputs == 9
@@ -117,9 +120,6 @@ class ClaimClassifier:
 
         # Adam optimizer
         opt = torch.optim.Adam(self.network.parameters(), lr=self.learning_rate)
-
-        # Preprocess X
-        X_clean = self._preprocessor(X_raw)
 
         # Convert X and Y to tensor floats
         X_clean = torch.as_tensor(X_clean).float().to(self.device)
@@ -194,7 +194,7 @@ class ClaimClassifier:
         self._init_weights(layer)
         layer_name = "lin{}".format(self.num_layers)
         layers.append((layer_name, layer))
-        layers.append(("sig{}".format(self.num_layers), nn.Sigmoid()))
+        layers.append(("sig{}".format(self.num_layers), nn.Tanh()))
 
         return nn.Sequential(OrderedDict(layers)).to(self.device)
 
@@ -371,15 +371,16 @@ if __name__ == "__main__":
     train_X_raw, train_y_raw, test_X_raw, test_y_raw, validation_X_raw, validation_y_raw = get_data_split(X_raw,
                                                                                                           y_raw)
 
-    best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,
-                                                            validation_y_raw)
-    print("Best params: \n", best_hyper_params)
+    #best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,validation_y_raw)
+    #print("Best params: \n", best_hyper_params)
 
-    classifier = ClaimClassifier(num_layers=10, neurons_per_layer=100, num_epochs=5, learning_rate=0.0001,
-                                 batch_size=128)
+    classifier = ClaimClassifier(num_layers=11, neurons_per_layer=25, num_epochs=800, learning_rate=0.001, batch_size=8)
 
     # Train network
-    # classifier.fit(train_X_raw, train_y_raw)
+    classifier.fit(train_X_raw, train_y_raw)
 
     # Evaluate
-    # classifier.evaluate_architecture(test_X_raw, test_y_raw)
+    classifier.evaluate_architecture(test_X_raw, test_y_raw)
+
+    # Save model
+    classifier.save_model()
