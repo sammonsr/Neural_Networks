@@ -88,7 +88,6 @@ class CrossEntropyLossLayer(Layer):
         n_obs = len(y_target)
         return -1 / n_obs * (y_target - probs)
 
-
 class SigmoidLayer(Layer):
     """
     SigmoidLayer: Applies sigmoid function elementwise.
@@ -350,7 +349,8 @@ class MultiLayerNetwork(object):
             last_layer_num_out = num_out
 
             self._layers.append(LinearLayer(num_in, num_out, layer_num=i))
-            self._layers.append(self.str_to_activation_layer(activations[i]))
+            if activations[i] != "identity":
+                self._layers.append(self.str_to_activation_layer(activations[i]))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -368,7 +368,7 @@ class MultiLayerNetwork(object):
             return ReluLayer()
         if layer_name == "sigmoid":
             return SigmoidLayer()
-        raise Exception('Unknown layer ' + layer_name)
+        raise Exception('Unknown layer: ' + layer_name)
 
     def forward(self, x):
         """
