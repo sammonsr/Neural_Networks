@@ -194,7 +194,7 @@ class ClaimClassifier:
         self._init_weights(layer)
         layer_name = "lin{}".format(self.num_layers)
         layers.append((layer_name, layer))
-        layers.append(("sig{}".format(self.num_layers), nn.Tanh()))
+        layers.append(("sig{}".format(self.num_layers), nn.Sigmoid()))
 
         return nn.Sequential(OrderedDict(layers)).to(self.device)
 
@@ -290,7 +290,7 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
     random.shuffle(num_layer_space)
     neurons_per_layer_space = list(range(20, 31))
     random.shuffle(neurons_per_layer_space)
-    num_epochs_space = [800]#list(range(25, 1000, 25))
+    num_epochs_space = [800]  # list(range(25, 1000, 25))
     random.shuffle(num_epochs_space)
     lr_space = [10 ** - i for i in range(3, 5)]
     random.shuffle(lr_space)
@@ -371,8 +371,8 @@ if __name__ == "__main__":
     train_X_raw, train_y_raw, test_X_raw, test_y_raw, validation_X_raw, validation_y_raw = get_data_split(X_raw,
                                                                                                           y_raw)
 
-    #best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,validation_y_raw)
-    #print("Best params: \n", best_hyper_params)
+    # best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,validation_y_raw)
+    # print("Best params: \n", best_hyper_params)
 
     classifier = ClaimClassifier(num_layers=11, neurons_per_layer=25, num_epochs=800, learning_rate=0.001, batch_size=8)
 
