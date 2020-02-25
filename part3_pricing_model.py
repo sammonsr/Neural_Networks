@@ -2,6 +2,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
 import pickle
 import numpy as np
+from sklearn.preprocessing import label_binarize
 
 import part2_claim_classifier
 
@@ -20,6 +21,12 @@ def fit_and_calibrate_classifier(classifier, X, y):
 
 # class for part 3
 class PricingModel():
+    STRING_COLS = [2, 5, 7, 12, 13, 19, 20, 21, 25]
+    BOOL_COLS = [6, 9]
+    DROP_COLS = [0, -1, -2]
+
+    uniq_vals_per_col = []
+
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY
     def __init__(self, calibrate_probabilities=False):
         """
@@ -28,6 +35,8 @@ class PricingModel():
         """
         self.y_mean = None
         self.calibrate = calibrate_probabilities
+        # (index, string) : new_index
+        self.one_hot_map = {}
         # =============================================================
         # READ ONLY IF WANTING TO CALIBRATE
         # Place your base classifier here
@@ -44,9 +53,8 @@ class PricingModel():
         # =============================================================
         self.base_classifier = part2_claim_classifier.load_model()
 
-
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
-    def _preprocessor(self, X_raw):
+    def _preprocessor(self, X_raw, currently_training):
         """Data preprocessing function.
 
         This function prepares the features of the data for training,
@@ -65,10 +73,32 @@ class PricingModel():
         # =============================================================
         # YOUR CODE HERE
 
-        # One hot encoding method: For a string column, get unique values, sort alphabetically, then use labelbinarizer
+        # One hot encoding method: For a string column, get unique values, then use labelbinarizer
         # to set correct cols to 1 or 0
 
-        return  # YOUR CLEAN DATA AS A NUMPY ARRAY
+        # Convert strings to bools
+        yes_no_map = np.vectorize(lambda a: 1 if a == "Yes" else 0)
+        for bool_col in self.BOOL_COLS:
+            X_raw = yes_no_map(X_raw[bool_col])
+
+        if currently_training:
+            # Setup one-hot encoding
+            for col_index in self.STRING_COLS:
+                uniq_values = list(set(X_raw[col_index]))
+                self.uniq_vals_per_col[col_index] = uniq_values
+
+        # Use one-hot encoding
+        for str_col in self.STRING_COLS:
+            new_cols = label_binarize(X_raw[:, str_col], classes=self.uniq_vals_per_col[str_col])
+            X_raw = np.concatenate((X_raw, new_cols), axis=1)
+
+        # Drop string cols and drop cols
+        np.delete(X_raw, self.STRING_COLS, axis=1)
+        np.delete(X_raw, self.DROP_COLS, axis=1)
+
+        # TODO: Standardisation
+
+        return X_raw
 
     def fit(self, X_raw, y_raw, claims_raw):
         """Classifier training function.
@@ -121,10 +151,11 @@ class PricingModel():
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
+        X_raw = X_raw.numpy()
+
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         # X_clean = self._preprocessor(X_raw)
-
 
         return  # return probabilities for the positive class (label 1)
 
@@ -145,6 +176,7 @@ class PricingModel():
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
+        X_raw = X_raw.numpy()
         # =============================================================
         # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor

@@ -205,7 +205,7 @@ class ClaimClassifier:
 
         Parameters
         ----------
-        X_raw : ndarray
+        X_raw : pandas array
             An array, this is the raw data as downloaded
 
         Returns
@@ -215,6 +215,8 @@ class ClaimClassifier:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
+
+        X_raw = X_raw.numpy()
 
         X_clean = torch.as_tensor(self._preprocessor(X_raw)).float()
 
