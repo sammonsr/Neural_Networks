@@ -88,6 +88,7 @@ class CrossEntropyLossLayer(Layer):
         n_obs = len(y_target)
         return -1 / n_obs * (y_target - probs)
 
+
 class SigmoidLayer(Layer):
     """
     SigmoidLayer: Applies sigmoid function elementwise.
@@ -149,12 +150,10 @@ class ReluLayer(Layer):
     def relu_prime(self, x):
         result = x.copy()
 
-        clamp = lambda v: max(0, v)
-        clamp = np.vectorize(clamp)
+        relu_prime_func = lambda v: 1 if v > 0 else 0
+        relu_prime_func = np.vectorize(relu_prime_func)
 
-        result = clamp(result)
-
-        return result
+        return relu_prime_func(result)
 
     def forward(self, x):
         #######################################################################
@@ -654,7 +653,6 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-
         # Scale between 0 and 1
         return (data - self.col_mins) / (self.col_maxs - self.col_mins)
 
@@ -728,6 +726,7 @@ def example_main():
 
     print(net)
     print("Validation accuracy: {}".format(accuracy))
+
 
 if __name__ == "__main__":
     example_main()
