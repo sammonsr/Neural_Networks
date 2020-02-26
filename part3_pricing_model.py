@@ -202,7 +202,6 @@ class PricingModel:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
-        X_raw = X_raw.to_numpy()
 
         # =============================================================
         # TODO: REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.

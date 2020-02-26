@@ -171,6 +171,8 @@ class ClaimClassifier:
         min_loss = loss_arr[min_index]
         print("Minimum loss was {} at epoch {}".format(min_loss, min_index + 1))
 
+        return self
+
     def create_network(self, num_inputs, num_outputs):
         layers = []
 
