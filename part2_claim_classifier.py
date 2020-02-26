@@ -5,6 +5,7 @@ import random
 import numpy as np
 import pickle
 
+import pandas
 import torch
 from torch import nn
 from sklearn import metrics, preprocessing
@@ -244,7 +245,7 @@ class ClaimClassifier:
         You can use external libraries such as scikit-learn for this
         if necessary.
         """
-        predictions = self.predict(X_test)
+        predictions = self.predict(pandas.DataFrame(X_test))
 
         if verbose:
             confusion_matrix = metrics.confusion_matrix(y_test, predictions.astype('int'))
@@ -377,7 +378,7 @@ if __name__ == "__main__":
     # best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,validation_y_raw)
     # print("Best params: \n", best_hyper_params)
 
-    classifier = ClaimClassifier(num_layers=11, neurons_per_layer=25, num_epochs=800, learning_rate=0.001, batch_size=8)
+    classifier = ClaimClassifier(num_layers=11, neurons_per_layer=25, num_epochs=800, learning_rate=0.001, batch_size=256)
 
     # Train network
     classifier.fit(train_X_raw, train_y_raw)

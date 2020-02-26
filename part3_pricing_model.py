@@ -121,7 +121,6 @@ class PricingModel:
         # If any row contains an empty cell, delete row
         return X_raw
 
-    # TODO: Remove claims_raw=None
     def fit(self, X_raw, claims_raw, y_raw):
         """Classifier training function.
 
@@ -239,8 +238,13 @@ if __name__ == "__main__":
     model = PricingModel()
     X_train, claim_train, y_train = load_data()
 
+    # Train model
     model.fit(X_train, claim_train, y_train)
 
+    # Test by performing predictions
     predictions = model.predict_premium(pd.DataFrame(X_train))
+
+    # Save model
+    model.save_model()
 
     print(predictions)
