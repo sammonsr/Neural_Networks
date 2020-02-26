@@ -4,8 +4,10 @@ from sklearn.model_selection import train_test_split
 import pickle
 import numpy as np
 from sklearn.preprocessing import label_binarize
-
+import pandas as pd
 import part2_claim_classifier
+# Import needed for load_model in part 2 to work
+from part2_claim_classifier import ClaimClassifier
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -36,8 +38,6 @@ class PricingModel():
         """
         self.y_mean = None
         self.calibrate = calibrate_probabilities
-        # (index, string) : new_index
-        self.one_hot_map = {}
         # =============================================================
         # READ ONLY IF WANTING TO CALIBRATE
         # Place your base classifier here
@@ -80,7 +80,30 @@ class PricingModel():
         # Standardisation
         X_raw = preprocessing.StandardScaler().fit_transform(X_raw)
 
+        # Get relevant columns
+        relevant_cols = self._relevant_col_indicies()
+        current_col_indicies = list(range(len(X_raw[0])))
+        cols_to_delete = filter(lambda c: c not in relevant_cols, current_col_indicies)
+
+        # Remove irrelevant cols
+        X_raw = np.delete(X_raw, cols_to_delete, axis=1)
+
         return X_raw
+
+    def _relevant_col_indicies(self):
+        cols_for_base_classifier = "drv_age1,vh_age,vh_cyl,vh_din,pol_bonus,vh_sale_begin,vh_sale_end,vh_value,vh_speed,claim_amount,made_claim".split(
+            ',')
+
+        train_data_file = open('part3_training_data.csv')
+        cols_in_part_3_data = train_data_file.readline().split()
+        train_data_file.close()
+
+        relevant_cols = []
+        for col in cols_for_base_classifier:
+            col_index = cols_in_part_3_data.index(col)
+            relevant_cols.append(col_index)
+
+        return relevant_cols
 
     def _one_hot_encoding_preproc(self, X_raw, currently_training):
         # One hot encoding method: For a string column, get unique values, then use labelbinarizer
@@ -103,6 +126,7 @@ class PricingModel():
         np.delete(X_raw, self.DROP_COLS, axis=1)
         return X_raw
 
+    # TODO: Remove claims_raw=None
     def fit(self, X_raw, y_raw, claims_raw):
         """Classifier training function.
 
@@ -123,6 +147,9 @@ class PricingModel():
             an instance of the fitted model
 
         """
+        # TODO: find out why claims_raw is a separate column
+        claims_raw = X_raw[:, -1]
+
         nnz = np.where(claims_raw != 0)[0]
         self.y_mean = np.mean(claims_raw[nnz])
 
@@ -153,13 +180,17 @@ class PricingModel():
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
+        # Convert pandas dataframe to numpy array
         X_raw = X_raw.numpy()
 
-        # =============================================================
-        # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
-        # X_clean = self._preprocessor(X_raw)
+        # Preprocess data
+        X_clean = self._preprocessor(X_raw, False)
 
-        return  # return probabilities for the positive class (label 1)
+        # Need to convert numpy to pandas in order to use predict
+        X_as_pandas = pd.DataFrame(X_clean)
+        predictions = self.base_classifier.predict(X_as_pandas)
+
+        return predictions
 
     def predict_premium(self, X_raw):
         """Predicts premiums based on the pricing model.
@@ -168,8 +199,8 @@ class PricingModel():
 
         Parameters
         ----------
-        X_raw : numpy.ndarray
-            A numpy array, this is the raw data as downloaded
+        X_raw : pandas.DataFrame
+            A pandas dataframe, this is the raw data as downloaded
 
         Returns
         -------
@@ -179,8 +210,9 @@ class PricingModel():
             POSITIVE class (that had accidents)
         """
         X_raw = X_raw.numpy()
+
         # =============================================================
-        # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
+        # TODO: REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor
 
         return self.predict_claim_probability(X_raw) * self.y_mean
@@ -192,8 +224,27 @@ class PricingModel():
             pickle.dump(self, target)
 
 
+def load_data(has_header=True, shuffle=False):
+    filename = 'part3_training_data.csv'
+    skip_rows = 1 if has_header else 0
+    data = np.loadtxt(filename, delimiter=',', skiprows=skip_rows, dtype='O')
+    if shuffle:
+        np.random.shuffle(data)
+    # Split into x and y
+    X, y = np.split(data, [-1], axis=1)
+
+    return X, y
+
+
 def load_model():
     # Please alter this section so that it works in tandem with the save_model method of your class
     with open('part3_pricing_model_linear.pickle', 'rb') as target:
         trained_model = pickle.load(target)
     return trained_model
+
+
+if __name__ == "__main__":
+    model = PricingModel()
+    X_train, y_train = load_data()
+
+    model.fit(X_train, y_train)
