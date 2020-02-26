@@ -111,7 +111,6 @@ class ClaimClassifier:
         num_inputs = len(X_clean[0])
         num_outputs = y_raw.shape[1]
 
-        assert num_inputs == 9
         assert num_outputs == 1
         self.network = self.create_network(num_inputs, num_outputs)
 
@@ -216,7 +215,7 @@ class ClaimClassifier:
             POSITIVE class (that had accidents)
         """
 
-        X_raw = X_raw.numpy()
+        X_raw = X_raw.to_numpy()
 
         X_clean = torch.as_tensor(self._preprocessor(X_raw)).float()
 
