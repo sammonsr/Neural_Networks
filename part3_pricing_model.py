@@ -30,8 +30,6 @@ class PricingModel:
     BOOL_COLS = [6, 9]
     DROP_COLS = [0, 8]
 
-    uniq_vals_per_col = {}
-
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY
     def __init__(self, calibrate_probabilities=False):
         """
@@ -40,6 +38,7 @@ class PricingModel:
         """
         self.y_mean = None
         self.calibrate = calibrate_probabilities
+        self.uniq_vals_per_col = {}
         # =============================================================
         # READ ONLY IF WANTING TO CALIBRATE
         # Place your base classifier here
