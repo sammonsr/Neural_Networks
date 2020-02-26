@@ -101,7 +101,7 @@ class SigmoidLayer(Layer):
         return "SigmoidLayer"
 
     def sigmoid(self, x):
-        return 1 / (1 + np.exp(x))
+        return 1 / (1 + np.exp(-x))
 
     def sigmoid_prime(self, x):
         return self.sigmoid(x) * (1 - self.sigmoid(x))
@@ -109,11 +109,9 @@ class SigmoidLayer(Layer):
     def forward(self, x):
         #                       ** START OF YOUR CODE **
         #######################################################################
-        result = x.copy()
-        result = self.sigmoid(result)
-
         self._cache_current['x'] = x.copy()
-        return result
+
+        return self.sigmoid(x)
         #######################################################################
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -707,7 +705,7 @@ def example_main():
 
     trainer = Trainer(
         network=net,
-        batch_size=8,
+        batch_size=128,
         nb_epoch=1000,
         learning_rate=0.01,
         loss_fun="cross_entropy",
