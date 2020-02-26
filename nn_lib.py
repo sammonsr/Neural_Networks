@@ -109,7 +109,7 @@ class SigmoidLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         result = x.copy()
-        self.sigmoid(result)
+        result = self.sigmoid(result)
 
         self._cache_current['x'] = x.copy()
         return result
@@ -152,7 +152,7 @@ class ReluLayer(Layer):
         clamp = lambda v: max(0, v)
         clamp = np.vectorize(clamp)
 
-        clamp(result)
+        result = clamp(result)
 
         return result
 
@@ -270,7 +270,7 @@ class LinearLayer(Layer):
         ones_row_vector = np.ones(dl_dz.shape[0])
 
         dl_dw = np.matmul(self._cache_current['x'].T, dl_dz)
-        dl_db = np.dot(ones_row_vector, dl_dz)
+        dl_db = np.matmul(ones_row_vector, dl_dz)
 
         # Set gradients for update_params usage
         self._grad_W_current = dl_dw
