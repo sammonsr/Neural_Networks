@@ -1,3 +1,4 @@
+from sklearn import preprocessing
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
 import pickle
@@ -73,31 +74,33 @@ class PricingModel():
         # =============================================================
         # YOUR CODE HERE
 
+        # Perform one hot encoding
+        X_raw = self._one_hot_encoding_preproc(X_raw, currently_training)
+
+        # Standardisation
+        X_raw = preprocessing.StandardScaler().fit_transform(X_raw)
+
+        return X_raw
+
+    def _one_hot_encoding_preproc(self, X_raw, currently_training):
         # One hot encoding method: For a string column, get unique values, then use labelbinarizer
         # to set correct cols to 1 or 0
-
         # Convert strings to bools
         yes_no_map = np.vectorize(lambda a: 1 if a == "Yes" else 0)
         for bool_col in self.BOOL_COLS:
             X_raw = yes_no_map(X_raw[bool_col])
-
         if currently_training:
             # Setup one-hot encoding
             for col_index in self.STRING_COLS:
                 uniq_values = list(set(X_raw[col_index]))
                 self.uniq_vals_per_col[col_index] = uniq_values
-
         # Use one-hot encoding
         for str_col in self.STRING_COLS:
             new_cols = label_binarize(X_raw[:, str_col], classes=self.uniq_vals_per_col[str_col])
             X_raw = np.concatenate((X_raw, new_cols), axis=1)
-
         # Drop string cols and drop cols
         np.delete(X_raw, self.STRING_COLS, axis=1)
         np.delete(X_raw, self.DROP_COLS, axis=1)
-
-        # TODO: Standardisation
-
         return X_raw
 
     def fit(self, X_raw, y_raw, claims_raw):
@@ -122,9 +125,8 @@ class PricingModel():
         """
         nnz = np.where(claims_raw != 0)[0]
         self.y_mean = np.mean(claims_raw[nnz])
-        # =============================================================
-        # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
-        X_clean = self._preprocessor(X_raw)
+
+        X_clean = self._preprocessor(X_raw, True)
 
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
         if self.calibrate:
