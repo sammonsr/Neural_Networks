@@ -239,7 +239,7 @@ def load_model():
 
 
 if __name__ == "__main__":
-    model = PricingModel(True)
+    model = PricingModel(False)
     X_train, claim_train, y_train = load_data()
 
     # Train model

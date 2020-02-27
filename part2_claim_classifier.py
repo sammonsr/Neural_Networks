@@ -234,7 +234,7 @@ class ClaimClassifier:
 
     def predict_proba(self, X_raw):
         p = self.predict(pandas.DataFrame(X_raw))
-        return np.array([1-p, p])
+        return np.array([p])
 
     '''
     def pred_to_binary(self, X):
