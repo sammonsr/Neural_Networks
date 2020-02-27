@@ -56,7 +56,7 @@ class PricingModel:
         self.base_classifier = part2_claim_classifier.load_model()
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
-    def _preprocessor(self, X_raw, currently_training):
+    def _preprocessor(self, X_raw, y_raw, currently_training):
         """Data preprocessing function.
 
         This function prepares the features of the data for training,
@@ -78,21 +78,26 @@ class PricingModel:
         # Perform one hot encoding
         X_raw = self._one_hot_encoding_preproc(X_raw, currently_training)
 
-        X_raw = self._remove_data_if_missing_values(X_raw)
+
+        if currently_training:
+            X_raw, y_raw = self._remove_data_if_missing_values(X_raw, y_raw)
+        else:
+            # TODO: fill in missing values for prediction data
+            pass
 
         # Standardisation
         X_raw = preprocessing.StandardScaler().fit_transform(X_raw)
 
-        return X_raw
+        return X_raw, y_raw
 
-    def _remove_data_if_missing_values(self, X_raw):
+    def _remove_data_if_missing_values(self, X_raw, y_raw):
         bad_rows = []
         for i, row in enumerate(X_raw):
             for col in range(len(row)):
                 if row[col] == '' or row[col] is None:
                     bad_rows.append(i)
                     break
-        return np.delete(X_raw, bad_rows, axis=0)
+        return np.delete(X_raw, bad_rows, axis=0), np.delete(y_raw, bad_rows, axis=0)
 
     def _one_hot_encoding_preproc(self, X_raw, currently_training):
         # One hot encoding method: For a string column, get unique values, then use labelbinarizer
@@ -144,14 +149,14 @@ class PricingModel:
         nnz = np.where(claims_raw != 0)[0]
         self.y_mean = np.mean(claims_raw[nnz])
 
-        X_clean = self._preprocessor(X_raw, True)
+        X_clean, y_clean = self._preprocessor(X_raw, y_raw, True)
 
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITIES
         if self.calibrate:
             self.base_classifier = fit_and_calibrate_classifier(
-                self.base_classifier, X_clean, y_raw)
+                self.base_classifier, X_clean, y_clean)
         else:
-            self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
+            self.base_classifier = self.base_classifier.fit(X_clean, y_clean)
         return self.base_classifier
 
     def predict_claim_probability(self, X_raw):
@@ -175,7 +180,7 @@ class PricingModel:
         X_raw = X_raw.to_numpy()
 
         # Preprocess data
-        X_clean = self._preprocessor(X_raw, False)
+        X_clean = self._preprocessor(X_raw, None, False)
 
         # Need to convert numpy to pandas in order to use predict
         X_as_pandas = pd.DataFrame(X_clean)
@@ -234,14 +239,23 @@ def load_model():
 
 
 if __name__ == "__main__":
-    model = PricingModel()
+    model = PricingModel(True)
     X_train, claim_train, y_train = load_data()
 
     # Train model
     model.fit(X_train, claim_train, y_train)
 
     # Test by performing predictions
-    predictions = model.predict_premium(pd.DataFrame(X_train))
+
+    bad_rows = []
+    for i, row in enumerate(X_train):
+        for col in range(len(row)):
+            if row[col] == '' or row[col] is None:
+                bad_rows.append(i)
+                break
+    X_pred = np.delete(X_train, bad_rows, axis=0)
+
+    predictions = model.predict_premium(pd.DataFrame(X_pred))
 
     # Save model
     model.save_model()

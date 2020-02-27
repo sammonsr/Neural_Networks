@@ -39,6 +39,9 @@ class ClaimClassifier:
         self.col_mins = []
         self.col_maxs = []
 
+        # Set classes
+        self.classes_ = np.array([0, 1])
+
     def __str__(self):
         return "ClaimClassifier(num_layers = {}, num_epochs={}, lr={}, batch_size={}, neurons_per_layer={})".format(
             self.num_layers, self.num_epochs, self.learning_rate, self.batch_size, self.neurons_per_layer)
@@ -228,6 +231,10 @@ class ClaimClassifier:
         self.network.eval()
 
         return self.network(X_clean).cpu().detach().numpy()
+
+    def predict_proba(self, X_raw):
+        p = self.predict(pandas.DataFrame(X_raw))
+        return np.array([1-p, p])
 
     '''
     def pred_to_binary(self, X):
