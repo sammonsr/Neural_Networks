@@ -1,3 +1,4 @@
+import sklearn
 import sys
 
 from sklearn import preprocessing
@@ -64,7 +65,7 @@ class PricingModel:
 
         Parameters
         ----------
-        X_raw : ndarray
+        X_raw : pandas.DataFrame
             An array, this is the raw data as downloaded
 
         Returns
@@ -75,15 +76,15 @@ class PricingModel:
         # =============================================================
         # YOUR CODE HERE
 
+        # Convert pandas dataframe to numpy array
+        X_raw = X_raw.to_numpy()
+
         # Perform one hot encoding
         X_raw = self._one_hot_encoding_preproc(X_raw, currently_training)
 
-
         if currently_training:
+            y_raw = y_raw.to_numpy()
             X_raw, y_raw = self._remove_data_if_missing_values(X_raw, y_raw)
-        else:
-            # TODO: fill in missing values for prediction data
-            pass
 
         # Standardisation
         X_raw = preprocessing.StandardScaler().fit_transform(X_raw)
@@ -106,6 +107,10 @@ class PricingModel:
         yes_no_map = np.vectorize(lambda a: 1 if a == "Yes" else 0)
         for bool_col in self.BOOL_COLS:
             X_raw[:, bool_col] = yes_no_map(X_raw[:, bool_col])
+
+        fill_empty_map = np.vectorize(lambda a: "___BLANK___" if a is None else a, otypes=[str])
+        for col_index in self.STRING_COLS:
+            X_raw[:, col_index] = fill_empty_map(X_raw[:, col_index])
 
         if currently_training:
             # Setup one-hot encoding
@@ -132,11 +137,11 @@ class PricingModel:
 
         Parameters
         ----------
-        X_raw : ndarray
+        X_raw : pandas.DataFrame
             This is the raw data as downloaded
-        y_raw : ndarray
+        y_raw : pandas.DataFrame
             A one dimensional array, this is the binary target variable
-        claims_raw: ndarray
+        claims_raw: pandas.DataFrame
             A one dimensional array which records the severity of claims
 
         Returns
@@ -146,17 +151,19 @@ class PricingModel:
 
         """
 
-        nnz = np.where(claims_raw != 0)[0]
-        self.y_mean = np.mean(claims_raw[nnz])
+        nnz = np.where(claims_raw.to_numpy() != 0)[0]
+        self.y_mean = np.mean(claims_raw.to_numpy()[nnz])
 
         X_clean, y_clean = self._preprocessor(X_raw, y_raw, True)
+
+        print(X_clean.dtype)
 
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITIES
         if self.calibrate:
             self.base_classifier = fit_and_calibrate_classifier(
                 self.base_classifier, X_clean, y_clean)
         else:
-            self.base_classifier = self.base_classifier.fit(X_clean, y_clean)
+            self.base_classifier = self.base_classifier.fit(X_clean, y_clean, preprocess=False)
         return self.base_classifier
 
     def predict_claim_probability(self, X_raw):
@@ -166,7 +173,7 @@ class PricingModel:
 
         Parameters
         ----------
-        X_raw : ndarray
+        X_raw : pandas.DataFrame
             This is the raw data as downloaded
 
         Returns
@@ -176,26 +183,21 @@ class PricingModel:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
-        # Convert pandas dataframe to numpy array
-        X_raw = X_raw.to_numpy()
-
         # Preprocess data
         X_clean = self._preprocessor(X_raw, None, False)
 
-        # Need to convert numpy to pandas in order to use predict
-        X_as_pandas = pd.DataFrame(X_clean)
-        predictions = self.base_classifier.predict(X_as_pandas)
+        predictions = self.base_classifier.predict(X_clean, preprocess=False)
 
         return predictions
 
-    def predict_premium(self, X_raw):
+    def predict_premium(self, X_pandas):
         """Predicts premiums based on the pricing model.
 
         Here you will implement the predict function for your classifier.
 
         Parameters
         ----------
-        X_raw : pandas.DataFrame
+        X_pandas : pandas.DataFrame
             A pandas dataframe, this is the raw data as downloaded
 
         Returns
@@ -210,7 +212,7 @@ class PricingModel:
         # TODO: REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor
 
-        return self.predict_claim_probability(X_raw) * self.y_mean
+        return self.predict_claim_probability(X_pandas) * self.y_mean
 
     def save_model(self):
         """Saves the class instance as a pickle file."""
@@ -222,13 +224,16 @@ class PricingModel:
 def load_data(has_header=True, shuffle=False):
     filename = 'part3_training_data.csv'
     skip_rows = 1 if has_header else 0
-    data = np.loadtxt(filename, delimiter=',', skiprows=skip_rows, dtype='O')
+    data = pd.read_csv(filename)
     if shuffle:
-        np.random.shuffle(data)
-    # Split into x and y
-    X, claims, y = np.split(data, [-2, -1], axis=1)
+        data = sklearn.utils.shuffle(data)
 
-    return X, claims.astype('float'), y.astype('float')
+    # Split into x and y
+    X = data.iloc[:, :-2]
+    claims = data.iloc[:, -2:-1]
+    y = data.iloc[:, -1:]
+
+    return X, claims, y
 
 
 def load_model():
@@ -242,11 +247,15 @@ if __name__ == "__main__":
     model = PricingModel(False)
     X_train, claim_train, y_train = load_data()
 
+    # Convert data into dataframe
+    X_train = pd.DataFrame(X_train)
+    claim_train = pd.DataFrame(claim_train)
+    y_train = pd.DataFrame(y_train)
+
     # Train model
     model.fit(X_train, claim_train, y_train)
 
     # Test by performing predictions
-
     bad_rows = []
     for i, row in enumerate(X_train):
         for col in range(len(row)):

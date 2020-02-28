@@ -87,7 +87,7 @@ class ClaimClassifier:
         random_weight = self._xavier_init((rows, cols))
         layer.weight.data = torch.as_tensor(random_weight).float()
 
-    def fit(self, X_raw, y_raw):
+    def fit(self, X_raw, y_raw, preprocess=True):
         """Classifier training function.
 
         Here you will implement the training function for your classifier.
@@ -104,13 +104,18 @@ class ClaimClassifier:
         self: (optional)
             an instance of the fitted model
         """
+        if type(X_raw) is pandas.DataFrame:
+            X_raw = X_raw.to_numpy()
+        if type(y_raw) is pandas.DataFrame:
+            y_raw = y_raw.to_numpy()
 
         # Setup preprocessing
         self.col_mins = np.amin(X_raw, axis=0)
         self.col_maxs = np.amax(X_raw, axis=0)
 
         # Preprocess X
-        X_clean = self._preprocessor(X_raw)
+        preprocessed = self._preprocessor(X_raw) if preprocess else X_raw
+        X_clean = torch.as_tensor(preprocessed).float()
 
         num_inputs = len(X_clean[0])
         num_outputs = y_raw.shape[1]
@@ -154,6 +159,7 @@ class ClaimClassifier:
 
                 opt.zero_grad()
                 y_pred_val = self.network(batch_x.float()).view(self.batch_size)
+                print(y_pred_val)
                 loss = loss_fun(y_pred_val, batch_y)
                 epoch_loss_arr = np.append(epoch_loss_arr, loss.item())
 
@@ -203,7 +209,7 @@ class ClaimClassifier:
 
         return nn.Sequential(OrderedDict(layers)).to(self.device)
 
-    def predict(self, X_raw):
+    def predict(self, X_raw, preprocess=True):
         """Classifier probability prediction function.
 
         Here you will implement the predict function for your classifier.
@@ -220,10 +226,14 @@ class ClaimClassifier:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
+        if type(X_raw) is pandas.DataFrame:
+            X_raw = X_raw.to_numpy()
 
-        X_raw = X_raw.to_numpy()
+        preprocessed = self._preprocessor(X_raw) if preprocess else X_raw
+        #print(X_raw.dtype)
+        #preprocessed = preprocessed.astype(float)
 
-        X_clean = torch.as_tensor(self._preprocessor(X_raw)).float()
+        X_clean = torch.as_tensor(preprocessed).float()
 
         # Setup data to use GPU if available
         X_clean = X_clean.to(self.device)
@@ -233,7 +243,7 @@ class ClaimClassifier:
         return self.network(X_clean).cpu().detach().numpy()
 
     def predict_proba(self, X_raw):
-        p = self.predict(pandas.DataFrame(X_raw))
+        p = self.predict(pandas.DataFrame(X_raw), preprocess=False)
         return np.array([p])
 
     '''
@@ -385,7 +395,8 @@ if __name__ == "__main__":
     # best_hyper_params = ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,validation_y_raw)
     # print("Best params: \n", best_hyper_params)
 
-    classifier = ClaimClassifier(num_layers=11, neurons_per_layer=25, num_epochs=800, learning_rate=0.001, batch_size=256)
+    # TODO: Change epochs back to 800
+    classifier = ClaimClassifier(num_layers=11, neurons_per_layer=25, num_epochs=2, learning_rate=0.001, batch_size=256)
 
     # Train network
     classifier.fit(train_X_raw, train_y_raw)
