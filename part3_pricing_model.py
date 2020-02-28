@@ -95,6 +95,16 @@ class PricingModel:
 
         return X_raw, y_raw
 
+    def perform_hyper_param_tuning(self, X, y):
+        # Preprocess data
+        X, y = self._preprocessor(X, y, True)
+
+        train_X_raw, train_y_raw, test_X_raw, test_y_raw, validation_X_raw, validation_y_raw = part2_claim_classifier.get_data_split(
+            X, y)
+
+        return part2_claim_classifier.ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, y,
+                                                                          preprocess=False)
+
     def _remove_data_if_missing_values(self, X_raw, y_raw):
         bad_rows = []
         for i, row in enumerate(X_raw):
@@ -215,7 +225,14 @@ class PricingModel:
         # TODO: REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor
 
-        return self.predict_claim_probability(X_pandas) * self.y_mean
+        probabilities = self.predict_claim_probability(X_pandas)[:, 0]
+
+        MIN = 0
+        MAX = 0.25
+
+        scaled_probabilities = ((probabilities - MIN) / (MAX - MIN))
+
+        return scaled_probabilities * self.y_mean
 
     def save_model(self):
         """Saves the class instance as a pickle file."""
@@ -249,6 +266,7 @@ def load_model():
 if __name__ == "__main__":
     model = PricingModel(False)
     X_train, claim_train, y_train = load_data()
+    # model.perform_hyper_param_tuning()
 
     # Convert data into dataframe
     X_train = pd.DataFrame(X_train)

@@ -250,7 +250,7 @@ class ClaimClassifier:
         return func(X)
         '''
 
-    def evaluate_architecture(self, X_test, y_test, verbose=True):
+    def evaluate_architecture(self, X_test, y_test, preprocess, verbose=True):
         """Architecture evaluation utility.
 
         Populate this function with evaluation utilities for your
@@ -259,7 +259,7 @@ class ClaimClassifier:
         You can use external libraries such as scikit-learn for this
         if necessary.
         """
-        predictions = self.predict(pandas.DataFrame(X_test))
+        predictions = self.predict(pandas.DataFrame(X_test), preprocess=preprocess)
 
         if verbose:
             confusion_matrix = metrics.confusion_matrix(y_test, predictions.astype('int'))
@@ -295,7 +295,7 @@ def load_model():
 
 
 # ENSURE TO ADD IN WHATEVER INPUTS YOU DEEM NECESSARRY TO THIS FUNCTION
-def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
+def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test, preprocess=True):
     """Performs a hyper-parameter for fine-tuning the classifier.
 
     Implement a function that performs a hyper-parameter search for your
@@ -339,7 +339,7 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test):
 
                             model.fit(X_train, y_train)
 
-                            score = model.evaluate_architecture(X_test, y_test, verbose=False)
+                            score = model.evaluate_architecture(X_test, y_test, preprocess=preprocess, verbose=False)
 
                             print(model, "score =", score)
                             print("==========================================================")
