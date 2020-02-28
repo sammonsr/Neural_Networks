@@ -307,11 +307,11 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test, prepro
     The function should return your optimised hyper-parameters.
     """
     # 0.649 best ROC so far: (11, 25, 800, 0.001, 8)
-    num_layer_space = list(range(9, 13))
+    num_layer_space = list(range(5, 15, 3))
     random.shuffle(num_layer_space)
-    neurons_per_layer_space = list(range(20, 40, 3))
+    neurons_per_layer_space = list(range(10, 60, 5))
     random.shuffle(neurons_per_layer_space)
-    num_epochs_space = list(range(100, 1000, 100))
+    num_epochs_space = list(range(100, 1100, 250))
     random.shuffle(num_epochs_space)
     lr_space = [10 ** - i for i in range(3, 5)]
     random.shuffle(lr_space)
