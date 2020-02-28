@@ -29,9 +29,9 @@ def fit_and_calibrate_classifier(classifier, X, y):
 
 # class for part 3
 class PricingModel:
-    STRING_COLS = [2, 5, 7, 12, 13, 19, 20, 21, 25, 34]
+    STRING_COLS = [2, 5, 7, 12, 13, 19, 20, 25, 34]
     BOOL_COLS = [6, 9]
-    DROP_COLS = [0, 8]
+    DROP_COLS = [0, 8, 21]
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY
     def __init__(self, calibrate_probabilities=False):
@@ -89,6 +89,7 @@ class PricingModel:
             y_raw = y_raw.to_numpy()
             # Removes rows with missing data to prevent filling with fake or biased data. Aprrox. 400 rows
             X_raw, y_raw = self._remove_data_if_missing_values(X_raw, y_raw)
+            print("Shape of data: ", X_raw.shape)
 
         # Standardisation
         X_raw = preprocessing.StandardScaler().fit_transform(X_raw)
@@ -267,9 +268,7 @@ def load_model():
 if __name__ == "__main__":
     model = PricingModel(False)
     X_train, claim_train, y_train = load_data()
-    print(model.perform_hyper_param_tuning(X_train, y_train))
-
-    '''
+    #print(model.perform_hyper_param_tuning(X_train, y_train))
 
     # Convert data into dataframe
     X_train = pd.DataFrame(X_train)
@@ -294,4 +293,3 @@ if __name__ == "__main__":
     model.save_model()
 
     print(predictions)
-    '''
