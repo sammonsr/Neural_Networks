@@ -225,6 +225,9 @@ class ClaimClassifier:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
+        if preprocess:
+            print("Preproc is: true")
+
         if type(X_raw) is pandas.DataFrame:
             X_raw = X_raw.to_numpy()
 
@@ -306,9 +309,9 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test, prepro
     # 0.649 best ROC so far: (11, 25, 800, 0.001, 8)
     num_layer_space = list(range(9, 13))
     random.shuffle(num_layer_space)
-    neurons_per_layer_space = list(range(20, 31))
+    neurons_per_layer_space = list(range(20, 40, 3))
     random.shuffle(neurons_per_layer_space)
-    num_epochs_space = [800]  # list(range(25, 1000, 25))
+    num_epochs_space = list(range(100, 1000, 100))
     random.shuffle(num_epochs_space)
     lr_space = [10 ** - i for i in range(3, 5)]
     random.shuffle(lr_space)
@@ -337,7 +340,7 @@ def ClaimClassifierHyperParameterSearch(X_train, y_train, X_test, y_test, prepro
 
                             print("Evaluating", model)
 
-                            model.fit(X_train, y_train)
+                            model.fit(X_train, y_train, preprocess=preprocess)
 
                             score = model.evaluate_architecture(X_test, y_test, preprocess=preprocess, verbose=False)
 

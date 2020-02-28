@@ -102,7 +102,8 @@ class PricingModel:
         train_X_raw, train_y_raw, test_X_raw, test_y_raw, validation_X_raw, validation_y_raw = part2_claim_classifier.get_data_split(
             X, y)
 
-        return part2_claim_classifier.ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, test_X_raw, y,
+        return part2_claim_classifier.ClaimClassifierHyperParameterSearch(train_X_raw, train_y_raw, validation_X_raw,
+                                                                          validation_y_raw,
                                                                           preprocess=False)
 
     def _remove_data_if_missing_values(self, X_raw, y_raw):
@@ -266,7 +267,9 @@ def load_model():
 if __name__ == "__main__":
     model = PricingModel(False)
     X_train, claim_train, y_train = load_data()
-    # model.perform_hyper_param_tuning()
+    print(model.perform_hyper_param_tuning(X_train, y_train))
+
+    '''
 
     # Convert data into dataframe
     X_train = pd.DataFrame(X_train)
@@ -291,3 +294,4 @@ if __name__ == "__main__":
     model.save_model()
 
     print(predictions)
+    '''
