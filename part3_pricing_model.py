@@ -77,6 +77,7 @@ class PricingModel:
         """
         # =============================================================
         # YOUR CODE HERE
+        print("Preprocessing", "training data" if currently_training else "prediction data")
 
         # Convert pandas dataframe to numpy array
         X_raw = X_raw.to_numpy()
@@ -86,9 +87,8 @@ class PricingModel:
 
         if currently_training:
             y_raw = y_raw.to_numpy()
-            print(np.shape(X_raw))
+            # Removes rows with missing data to prevent filling with fake or biased data. Aprrox. 400 rows
             X_raw, y_raw = self._remove_data_if_missing_values(X_raw, y_raw)
-            print(np.shape(X_raw))
 
         # Standardisation
         X_raw = preprocessing.StandardScaler().fit_transform(X_raw)
@@ -159,7 +159,7 @@ class PricingModel:
 
         X_clean, y_clean = self._preprocessor(X_raw, y_raw, True)
 
-        print(X_clean.dtype)
+        print("Fitting model")
 
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITIES
         if self.calibrate:
@@ -187,7 +187,7 @@ class PricingModel:
             POSITIVE class (that had accidents)
         """
         # Preprocess data
-        X_clean = self._preprocessor(X_raw, None, False)
+        X_clean, _ = self._preprocessor(X_raw, None, False)
 
         predictions = self.base_classifier.predict(X_clean, preprocess=False)
 

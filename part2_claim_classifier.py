@@ -229,8 +229,6 @@ class ClaimClassifier:
             X_raw = X_raw.to_numpy()
 
         preprocessed = self._preprocessor(X_raw) if preprocess else X_raw
-        #print(X_raw.dtype)
-        #preprocessed = preprocessed.astype(float)
 
         X_clean = torch.as_tensor(preprocessed).float()
 
