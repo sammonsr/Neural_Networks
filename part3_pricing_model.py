@@ -1,3 +1,5 @@
+import math
+
 import sklearn
 import sys
 
@@ -84,7 +86,9 @@ class PricingModel:
 
         if currently_training:
             y_raw = y_raw.to_numpy()
+            print(np.shape(X_raw))
             X_raw, y_raw = self._remove_data_if_missing_values(X_raw, y_raw)
+            print(np.shape(X_raw))
 
         # Standardisation
         X_raw = preprocessing.StandardScaler().fit_transform(X_raw)
@@ -95,7 +99,7 @@ class PricingModel:
         bad_rows = []
         for i, row in enumerate(X_raw):
             for col in range(len(row)):
-                if row[col] == '' or row[col] is None:
+                if row[col] == '' or row[col] is None or math.isnan(row[col]):
                     bad_rows.append(i)
                     break
         return np.delete(X_raw, bad_rows, axis=0), np.delete(y_raw, bad_rows, axis=0)
@@ -125,7 +129,6 @@ class PricingModel:
 
         # Drop string cols and drop cols
         X_raw = np.delete(X_raw, self.STRING_COLS + self.DROP_COLS, axis=1)
-        np.set_printoptions(threshold=sys.maxsize)
 
         # If any row contains an empty cell, delete row
         return X_raw

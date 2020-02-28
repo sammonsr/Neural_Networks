@@ -159,7 +159,6 @@ class ClaimClassifier:
 
                 opt.zero_grad()
                 y_pred_val = self.network(batch_x.float()).view(self.batch_size)
-                print(y_pred_val)
                 loss = loss_fun(y_pred_val, batch_y)
                 epoch_loss_arr = np.append(epoch_loss_arr, loss.item())
 
