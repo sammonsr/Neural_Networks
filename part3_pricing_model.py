@@ -29,9 +29,9 @@ def fit_and_calibrate_classifier(classifier, X, y):
 
 # class for part 3
 class PricingModel:
-    STRING_COLS = [2, 5, 7, 12, 13, 19, 20, 25]
+    STRING_COLS = [2, 5, 7, 12, 13, 19, 20, 25, 33]
     BOOL_COLS = [6, 9]
-    DROP_COLS = [0, 8, 21, 28, 29, 30, 31, 32, 33, 34]
+    DROP_COLS = [0, 8, 21, 28, 29, 30, 31, 32, 34]
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY
     def __init__(self, calibrate_probabilities=False):
@@ -272,9 +272,9 @@ if __name__ == "__main__":
     model = PricingModel(False)
     X_train, claim_train, y_train = load_data()
 
-    print(model.perform_hyper_param_tuning(X_train, y_train))
+    #print(model.perform_hyper_param_tuning(X_train, y_train))
     
-    """
+
     # Convert data into dataframe
     X_train = pd.DataFrame(X_train)
     claim_train = pd.DataFrame(claim_train)
@@ -298,4 +298,3 @@ if __name__ == "__main__":
     model.save_model()
 
     print(predictions)
-    """
