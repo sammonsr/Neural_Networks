@@ -67,7 +67,7 @@ class PricingModel:
 
         Parameters
         ----------
-        X_raw : pandas.DataFrame
+        X_raw : pandas.DataFramebase_classifier
             An array, this is the raw data as downloaded
 
         Returns
@@ -273,7 +273,6 @@ if __name__ == "__main__":
     X_train, claim_train, y_train = load_data()
 
     #print(model.perform_hyper_param_tuning(X_train, y_train))
-    
 
     # Convert data into dataframe
     X_train = pd.DataFrame(X_train)

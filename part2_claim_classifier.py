@@ -396,13 +396,13 @@ if __name__ == "__main__":
     # print("Best params: \n", best_hyper_params)
 
     # TODO: Change epochs back to 800
-    classifier = ClaimClassifier(num_layers=11, neurons_per_layer=25, num_epochs=2, learning_rate=0.001, batch_size=256)
+    classifier = ClaimClassifier(num_layers=14, neurons_per_layer=10, num_epochs=100, learning_rate=0.0001, batch_size=128)
 
     # Train network
     classifier.fit(train_X_raw, train_y_raw)
 
     # Evaluate
-    classifier.evaluate_architecture(test_X_raw, test_y_raw)
+    classifier.evaluate_architecture(test_X_raw, test_y_raw, True)
 
     # Save model
     classifier.save_model()
